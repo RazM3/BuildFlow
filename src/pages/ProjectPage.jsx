@@ -1218,33 +1218,26 @@ function RoomBlock({ room, selected, view, cost, onMouseDown, onHandleDown }) {
   return (
     <div onMouseDown={onMouseDown} style={{
       position: 'absolute', left: room.x, top: room.y, width: room.w, height: room.h,
-      background: room.color,
-      border: selected ? '2px solid rgba(26,58,92,0.4)' : 'none',
+      background: '#fff',
+      border: selected ? '2px solid rgba(28,28,28,0.35)' : 'none',
       cursor: 'move', zIndex: selected ? 10 : 1,
-      boxShadow: selected ? '0 0 0 3px rgba(26,58,92,0.15)' : 'none',
+      boxShadow: selected ? '0 0 0 3px rgba(28,28,28,0.1)' : 'none',
     }}>
       <div className="absolute inset-0 flex flex-col items-center justify-center px-2 pointer-events-none">
-        <span className="text-[#1a3a5c] font-bold tracking-wider leading-tight text-center"
+        <span className="text-[#1c1c1c] font-bold tracking-wider leading-tight text-center"
           style={{ fontSize: isCorridor ? 8 : 9 }}>
           {isCorridor ? 'HALL' : room.type.toUpperCase()}
         </span>
         {!isCorridor && (
-          <>
-            <span className="text-[#1a3a5c]/40 mt-0.5" style={{ fontSize: 8 }}>
-              {pxToM(room.w)}m × {pxToM(room.h)}m
-            </span>
-            {view === 'builder' && room.w > 80 && room.h > 60 && cost > 0 && (
-              <span className="text-[#1a3a5c]/55 font-semibold mt-0.5" style={{ fontSize: 8 }}>
-                {fmtAUD(cost)}
-              </span>
-            )}
-          </>
+          <span className="text-[#1c1c1c]/40 mt-0.5" style={{ fontSize: 8 }}>
+            {pxToM(room.w)}m × {pxToM(room.h)}m
+          </span>
         )}
       </div>
       {selected && HANDLES.map(h => (
         <div key={h} onMouseDown={e => onHandleDown(e, h)} style={{
           position: 'absolute', width: 9, height: 9, background: 'white',
-          border: '2px solid #1a3a5c', borderRadius: 2, cursor: HCURSOR[h], zIndex: 20, ...HPOS[h],
+          border: '2px solid #1c1c1c', borderRadius: 2, cursor: HCURSOR[h], zIndex: 20, ...HPOS[h],
         }} />
       ))}
     </div>
@@ -1256,133 +1249,128 @@ function getFurniturePaths(room) {
   const { x, y, w, h } = room
   if (w < 55 || h < 48) return []
   const paths = []
-  const P = 7
-  const R  = (lx, ly, lw, lh) => lw > 0 && lh > 0 ? `M ${lx} ${ly} h ${lw} v ${lh} h ${-lw} Z` : null
-  const C  = (cx, cy, r) => r > 1 ? `M ${cx+r} ${cy} a ${r} ${r} 0 1 0 ${-2*r} 0 a ${r} ${r} 0 1 0 ${2*r} 0` : null
-  const L  = (x1, y1, x2, y2) => `M ${x1} ${y1} L ${x2} ${y2}`
+  const P = 8
+  const R = (lx, ly, lw, lh) => lw > 0 && lh > 0 ? `M ${lx} ${ly} h ${lw} v ${lh} h ${-lw} Z` : null
+  const L = (x1, y1, x2, y2) => `M ${x1} ${y1} L ${x2} ${y2}`
+  const C = (cx, cy, r) => r > 1 ? `M ${cx+r} ${cy} a ${r} ${r} 0 1 0 ${-2*r} 0 a ${r} ${r} 0 1 0 ${2*r} 0` : null
 
   switch (room.type) {
     case 'Living Room': {
-      const sW = Math.min(w * 0.72, w - 2*P), sD = Math.min(Math.max(16, h * 0.18), 24)
-      paths.push(R(x+P, y+h-P-sD, sW, sD))                        // sofa horizontal
-      paths.push(R(x+P, y+h-P-sD*1.8, sD, sD*0.8))                // sofa left arm
-      const tW = sW*0.32, tH = sD*0.85
-      paths.push(R(x+P+sW*0.32, y+h-P-sD-tH-5, tW, tH))          // coffee table
+      // L-shaped sofa outline
+      const sW = Math.min(w * 0.65, w - 2*P), sD = Math.min(Math.max(14, h * 0.16), 20)
+      const armD = sD, armH = Math.min(h * 0.38, 42)
+      const sX = x + P, sY = y + h - P - sD
+      paths.push(R(sX, sY, sW, sD))           // seat base
+      paths.push(R(sX, sY - armH + sD, armD, armH - sD))  // left arm
       break
     }
     case 'Kitchen': {
-      const cD = Math.min(Math.max(14, h*0.2), 22)
-      paths.push(R(x+P, y+h-P-cD, w-2*P, cD))                    // bottom counter
-      paths.push(R(x+w-P-cD, y+P, cD, h-2*P-cD))                 // right counter
-      const skW = 15, skH = 12, skX = x+(w-skW)/2, skY = y+h-P-cD+3
-      paths.push(R(skX, skY, skW, skH))                            // sink bowl
-      paths.push(L(skX+skW/2, skY+2, skX+skW/2, skY+skH-2))      // sink cross H
-      paths.push(L(skX+2, skY+skH/2, skX+skW-2, skY+skH/2))      // sink cross V
+      // bench lines along bottom and one side, small sink rectangle + two circles
+      const bD = 10
+      paths.push(L(x+P, y+h-P-bD, x+w-P, y+h-P-bD))   // bottom bench line (top edge)
+      paths.push(L(x+P, y+h-P, x+w-P, y+h-P))           // bottom bench line (bottom edge)
+      paths.push(L(x+w-P-bD, y+P, x+w-P-bD, y+h-P-bD)) // right bench line (left edge)
+      paths.push(L(x+w-P, y+P, x+w-P, y+h-P-bD))        // right bench line (right edge)
+      // sink: small rectangle with two circles
+      const skW = 16, skH = 11, skX = x + P + (w-2*P-skW)/2, skY = y + h - P - bD + 1
+      paths.push(R(skX, skY, skW, skH - 2))
+      const r = 3.5
+      paths.push(C(skX + skW/2 - r - 1, skY + (skH-2)/2, r))
+      paths.push(C(skX + skW/2 + r + 1, skY + (skH-2)/2, r))
       break
     }
     case 'Bedroom': {
-      const bW = Math.min(w-2*P, Math.max(w*0.7, 56))
-      const bH = Math.min(h*0.58, h-2*P, Math.max(bW*0.65, 36))
-      const bX = x+(w-bW)/2, bY = y+(h-bH)/2
-      paths.push(R(bX, bY, bW, bH))                                // bed frame
-      paths.push(L(bX, bY+10, bX+bW, bY+10))                      // headboard line
-      const pW = bW/2-10
-      if (pW > 8) {
-        paths.push(R(bX+5, bY+3, pW, 7))                           // left pillow
-        paths.push(R(bX+bW/2+5, bY+3, pW, 7))                     // right pillow
-      }
-      if (bX-x > 12) {
-        const stS = Math.min(bX-x-3, 14)
-        paths.push(R(bX-stS-2, bY, stS, stS))                      // bedside L
-        paths.push(R(bX+bW+2, bY, stS, stS))                       // bedside R
-      }
+      // simple bed rectangle + headboard line at top
+      const bW = Math.min(w - 2*P, Math.max(w * 0.65, 50))
+      const bH = Math.min(h * 0.55, h - 2*P, Math.max(bW * 0.6, 34))
+      const bX = x + (w - bW) / 2, bY = y + (h - bH) / 2
+      paths.push(R(bX, bY, bW, bH))
+      paths.push(L(bX, bY + 9, bX + bW, bY + 9))  // headboard line
       break
     }
     case 'Bathroom': {
-      const tW = Math.min(w*0.38, 26), tH = Math.min(h*0.4, 34)
-      const tX = x+w-P-tW, tY = y+P
-      paths.push(R(tX, tY, tW, tH*0.28))                           // cistern
-      const bRx = tW*0.46, bRy = tH*0.36
-      paths.push(`M ${tX+tW/2+bRx} ${tY+tH*0.64} a ${bRx} ${bRy} 0 1 0 ${-2*bRx} 0 a ${bRx} ${bRy} 0 1 0 ${2*bRx} 0`) // bowl
-      const shS = Math.min(Math.min(w-tW-3*P, h*0.46), 44)
-      if (shS > 18) {
-        const shX = x+P, shY = y+h-P-shS
-        paths.push(R(shX, shY, shS, shS))                          // shower
-        paths.push(L(shX+3, shY+3, shX+shS-3, shY+shS-3))        // X mark
-        paths.push(L(shX+shS-3, shY+3, shX+3, shY+shS-3))
+      // toilet (rounded rect), shower square in corner, vanity line
+      const tW = Math.min(w * 0.35, 22), tH = Math.min(h * 0.42, 30)
+      const tX = x + w - P - tW, tY = y + P
+      paths.push(R(tX, tY, tW, tH * 0.28))         // cistern
+      paths.push(C(tX + tW/2, tY + tH * 0.64, Math.min(tW*0.4, tH*0.3)))  // bowl
+      const shS = Math.min(Math.min(w - tW - 3*P, h * 0.44), 36)
+      if (shS > 14) {
+        paths.push(R(x + P, y + h - P - shS, shS, shS))  // shower square
       }
-      const vW = Math.min(w*0.45, 36), vD = Math.min(h*0.18, 16)
-      paths.push(R(x+P, y+P, vW, vD))                             // vanity
+      paths.push(L(x + P, y + P, x + P + Math.min(w * 0.4, 28), y + P))  // vanity line
       break
     }
     case 'Dining Room': {
-      const tW = Math.min(w*0.52, 72), tH = Math.min(h*0.42, 52)
-      const tX = x+(w-tW)/2, tY = y+(h-tH)/2
-      paths.push(R(tX, tY, tW, tH))
-      const cW = 12, cH = 9, cGap = 4
-      const cols = Math.max(2, Math.floor(tW/(cW+cGap)))
-      const rowsS = Math.max(1, Math.floor(tH/(cH*2+cGap)))
-      const totalCW = cols*(cW+cGap)-cGap, startCX = tX+(tW-totalCW)/2
+      const tW = Math.min(w * 0.5, 64), tH = Math.min(h * 0.4, 48)
+      const tX = x + (w - tW) / 2, tY = y + (h - tH) / 2
+      paths.push(R(tX, tY, tW, tH))  // table
+      const cW = 10, cH = 8, gap = 4
+      const cols = Math.max(2, Math.min(4, Math.floor(tW / (cW + gap))))
+      const startCX = tX + (tW - cols * (cW + gap) + gap) / 2
       for (let i = 0; i < cols; i++) {
-        const cx = startCX+i*(cW+cGap)
-        paths.push(R(cx, tY-cH-3, cW, cH))
-        paths.push(R(cx, tY+tH+3, cW, cH))
+        const cx = startCX + i * (cW + gap)
+        paths.push(R(cx, tY - cH - 3, cW, cH))
+        paths.push(R(cx, tY + tH + 3, cW, cH))
       }
-      const totalRH = rowsS*(cW+cGap)-cGap, startRY = tY+(tH-totalRH)/2
-      for (let i = 0; i < rowsS; i++) {
-        const cy = startRY+i*(cW+cGap)
-        paths.push(R(tX-cH-3, cy, cH, cW))
-        paths.push(R(tX+tW+3, cy, cH, cW))
-      }
+      paths.push(R(tX - cH - 3, tY + (tH - cW) / 2, cH, cW))  // left chair
+      paths.push(R(tX + tW + 3, tY + (tH - cW) / 2, cH, cW))  // right chair
       break
     }
     case 'Garage': {
-      const carH = Math.min(h-2*P, 32), carY = y+(h-carH)/2
-      if (w > 130) {
-        const carW = Math.min((w-3*P)/2, 60)
-        paths.push(R(x+P, carY, carW, carH))
-        paths.push(R(x+2*P+carW, carY, carW, carH))
+      // 2 car outlines: rectangles with windshield line
+      const carW = Math.min((w - 3*P) / 2, 56), carH = Math.min(h - 2*P, 28)
+      const carY = y + (h - carH) / 2
+      if (w > 110) {
+        const c1x = x + P, c2x = x + 2*P + carW
+        paths.push(R(c1x, carY, carW, carH))
+        paths.push(L(c1x + 5, carY + 7, c1x + carW - 5, carY + 7))
+        paths.push(R(c2x, carY, carW, carH))
+        paths.push(L(c2x + 5, carY + 7, c2x + carW - 5, carY + 7))
       } else {
-        paths.push(R(x+(w-Math.min(w-2*P,58))/2, carY, Math.min(w-2*P,58), carH))
+        const cW2 = Math.min(w - 2*P, 56), cX = x + (w - cW2) / 2
+        paths.push(R(cX, carY, cW2, carH))
+        paths.push(L(cX + 5, carY + 7, cX + cW2 - 5, carY + 7))
       }
       break
     }
     case 'Laundry': {
-      const mS = Math.min(w-2*P, h-2*P, 34)
-      const mX = x+(w-mS)/2, mY = y+(h-mS)/2
+      const mS = Math.min(w - 2*P, h - 2*P, 32)
+      const mX = x + (w - mS) / 2, mY = y + (h - mS) / 2
       paths.push(R(mX, mY, mS, mS))
-      paths.push(C(mX+mS/2, mY+mS/2, mS*0.3))
+      paths.push(C(mX + mS/2, mY + mS/2, mS * 0.28))
       break
     }
     case 'Study':
     case 'Home Office': {
-      const dW = Math.min(w-2*P, 66), dD = Math.min(Math.max(14, h*0.22), 20)
-      paths.push(R(x+P, y+P, dW, dD))
-      paths.push(R(x+P, y+P+dD, dD, Math.min(h*0.4,36)-dD))
+      const dW = Math.min(w - 2*P, 60), dD = 10
+      paths.push(L(x+P, y+P, x+P+dW, y+P))         // desk top edge
+      paths.push(L(x+P, y+P+dD, x+P+dW, y+P+dD))   // desk bottom edge
       break
     }
     case 'Theatre Room': {
-      const scW = Math.min(w-2*P, w*0.82), scX = x+(w-scW)/2
-      paths.push(L(scX, y+P+4, scX+scW, y+P+4))
-      const sW = 12, sH = 10, sGx = 3, sGy = 7
-      const cols = Math.max(2, Math.floor((w-2*P)/(sW+sGx)))
-      const rows = Math.max(1, Math.floor((h-3*P-16)/(sH+sGy)))
-      const seatsW = cols*sW+(cols-1)*sGx, sStartX = x+(w-seatsW)/2
-      for (let row = 0; row < rows; row++) for (let col = 0; col < cols; col++) {
-        const sx = sStartX+col*(sW+sGx), sy = y+2*P+14+row*(sH+sGy)
-        if (sx+sW <= x+w-P && sy+sH <= y+h-P) paths.push(R(sx, sy, sW, sH))
+      const sW = 11, sH = 9, sGx = 4, sGy = 6
+      const cols = Math.max(2, Math.min(5, Math.floor((w - 2*P) / (sW + sGx))))
+      const rows = Math.max(1, Math.min(3, Math.floor((h - 2*P - 10) / (sH + sGy))))
+      const seatsW = cols * (sW + sGx) - sGx
+      const sStartX = x + (w - seatsW) / 2
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const sx = sStartX + col * (sW + sGx), sy = y + P + 10 + row * (sH + sGy)
+          if (sx + sW <= x + w - P && sy + sH <= y + h - P) paths.push(R(sx, sy, sW, sH))
+        }
       }
       break
     }
     case 'Pool Deck': {
-      const pW = Math.min(w-4*P, w*0.65), pH = Math.min(h-2*P, h*0.65)
-      const pX = x+(w-pW)/2, pY = y+(h-pH)/2
+      const pW = Math.min(w - 4*P, w * 0.6), pH = Math.min(h - 2*P, h * 0.6)
+      const pX = x + (w - pW) / 2, pY = y + (h - pH) / 2
       paths.push(`M ${pX+pW} ${pY+pH/2} a ${pW/2} ${pH/2} 0 1 0 ${-pW} 0 a ${pW/2} ${pH/2} 0 1 0 ${pW} 0`)
       break
     }
     case 'Alfresco': {
-      const tR = Math.min(w, h)*0.2
-      paths.push(C(x+w/2, y+h/2, tR))
+      const r = Math.min(w, h) * 0.18
+      paths.push(C(x + w/2, y + h/2, r))
       break
     }
   }
@@ -1401,7 +1389,7 @@ function FurnitureLayer({ rooms, zoom, CW, CH }) {
         if (room.type === 'Corridor') return null
         return getFurniturePaths(room).map((d, i) => (
           <path key={`${room.id}-f${i}`} d={d}
-            stroke="#1a3a5c" strokeWidth={1} fill="none" strokeOpacity={0.35}
+            stroke="rgba(0,0,0,0.4)" strokeWidth={1} fill="none"
             strokeLinecap="round" strokeLinejoin="round" />
         ))
       })}
@@ -1480,30 +1468,24 @@ function WallOverlay({ rooms, zoom, CW, CH }) {
   if (!rooms.length) return null
   const elements = []
   rooms.forEach(room => {
-    const isCorridor = room.type === 'Corridor'
-    if (isCorridor) {
-      elements.push(
-        <rect key={`${room.id}-c`} x={room.x} y={room.y} width={room.w} height={room.h}
-          fill="none" stroke="#94a3b8" strokeWidth={6} strokeDasharray="6 4" />
-      )
-      return
-    }
-    const door = doorSideFor(room, rooms)
+    const door = room.type === 'Corridor' ? null : doorSideFor(room, rooms)
     const walls = ['N', 'S', 'E', 'W'].map(side => {
       const internal = isAdj(room, side, rooms)
       const sw = internal ? WALL_INT : WALL_EXT
       return (
         <path key={`${room.id}-${side}`}
           d={wallPath(room, side, door)}
-          stroke="#1a3a5c" strokeWidth={sw} strokeLinecap="square" fill="none" />
+          stroke="#1c1c1c" strokeWidth={sw} strokeLinecap="square" fill="none" />
       )
     })
-    const arc = (
-      <path key={`${room.id}-arc`}
-        d={doorArcPath(room, door)}
-        stroke="#1a3a5c" strokeWidth={1.5} strokeLinecap="round" fill="none" />
-    )
-    elements.push(...walls, arc)
+    elements.push(...walls)
+    if (door) {
+      elements.push(
+        <path key={`${room.id}-arc`}
+          d={doorArcPath(room, door)}
+          stroke="#1c1c1c" strokeWidth={1.2} strokeLinecap="round" fill="none" />
+      )
+    }
   })
   return (
     <svg style={{
@@ -1526,7 +1508,7 @@ function DimensionLines({ rooms, zoom, CW, CH }) {
   const W = ((maxX - minX) / MPX).toFixed(1)
   const H = ((maxY - minY) / MPX).toFixed(1)
   const P = 32
-  const tc = '#64748b'
+  const tc = '#888'
   return (
     <svg style={{
       position: 'absolute', top: 0, left: 0, width: CW, height: CH,
