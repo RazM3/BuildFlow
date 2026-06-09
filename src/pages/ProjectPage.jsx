@@ -1508,7 +1508,7 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
           />
         ) : (
           <div className={`shrink-0 flex flex-col overflow-y-auto border-l ${
-            clientOnly ? 'w-[260px] bg-[#fafaf8] border-gray-100' : 'w-[240px] bg-white border-gray-100'
+            clientOnly ? 'w-[280px] bg-white border-gray-100' : 'w-[240px] bg-white border-gray-100'
           }`}>
             {!clientOnly && view === 'builder' ? (
               <>
@@ -1545,33 +1545,15 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                 )}
               </>
             ) : (
-              (() => {
-                const isClientMode = clientOnly || view === 'client'
-                const selRoom = rooms.find(r => r.id === selId)
-                if (isClientMode && selRoom) {
-                  return (
-                    <RoomMaterialsPanel
-                      room={selRoom}
-                      onBack={() => setSelId(null)}
-                      onMaterialChange={(roomId, cat, optId) =>
-                        updRoom(roomId, { clientMaterials: { ...(rooms.find(r => r.id === roomId)?.clientMaterials ?? {}), [cat]: optId } })
-                      }
-                    />
-                  )
-                }
-                return (
-                  <ClientPanel
-                    clientOnly={clientOnly}
-                    onOpenAI={() => setAiClientOpen(true)}
-                    rooms={rooms}
-                    style={style} setStyle={setStyle}
-                    budgetTier={budgetTier} setBudgetTier={setBudgetTier}
-                    finishes={finishes} setFinishes={setFinishes}
-                    msgText={msgText} setMsgText={setMsgText}
-                    messages={messages} onSend={sendMessage}
-                  />
-                )
-              })()
+              <ClientRightPanel
+                rooms={rooms}
+                selId={selId}
+                setSelId={setSelId}
+                updRoom={updRoom}
+                msgText={msgText}
+                setMsgText={setMsgText}
+                onSend={sendMessage}
+              />
             )}
           </div>
         )}
@@ -1790,7 +1772,179 @@ function BuilderPanel({
   )
 }
 
-// ─── room materials panel (client) ────────────────────────────────────────────
+// ─── client right panel ───────────────────────────────────────────────────────
+function RoomIcon({ type = '', size = 16 }) {
+  const p = { width: size, height: size, viewBox: '0 0 18 18', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' }
+  if (type.includes('Bedroom') || type === 'Walk-in Robe') return <svg {...p}><rect x="1.5" y="9" width="15" height="7" rx="1.5"/><path d="M1.5 13h15M5 9V7.5a2 2 0 014 0V9M9 9V7.5a2 2 0 014 0V9M1.5 15.5v1M16.5 15.5v1"/></svg>
+  if (type === 'Kitchen' || type === 'Walk-in Pantry') return <svg {...p}><path d="M5 2v7M5 12v4M9 2v3a3 3 0 003 3h.5v8M14.5 2v4"/></svg>
+  if (type === 'Bathroom' || type === 'Ensuite' || type === 'Laundry') return <svg {...p}><rect x="1.5" y="6.5" width="15" height="9" rx="1"/><path d="M1.5 11h15M5.5 6.5V5a2 2 0 014 0v1.5"/></svg>
+  if (type === 'Living Room' || type === 'Lounge') return <svg {...p}><rect x="2.5" y="8" width="13" height="5.5" rx="1.5"/><path d="M2.5 11h-1V9a1 1 0 011-1h14a1 1 0 011 1v2h-1M5.5 13.5v2M12.5 13.5v2"/></svg>
+  if (type === 'Dining Room') return <svg {...p}><rect x="4" y="7" width="10" height="7" rx="1"/><path d="M1 7h16M7 7V4.5M11 7V4.5M4 14v2M14 14v2"/></svg>
+  if (type === 'Garage') return <svg {...p}><rect x="1.5" y="5" width="15" height="11" rx="1"/><path d="M1.5 9.5h15M5.5 5V9.5M9 5V9.5M12.5 5V9.5"/></svg>
+  if (type === 'Alfresco' || type === 'Pool Deck') return <svg {...p}><path d="M3 14h12M9 3v11M6 5.5C6 3.5 7.5 2 9 2M12 5.5C12 3.5 10.5 2 9 2"/></svg>
+  if (type === 'Study' || type === 'Home Office' || type === 'Theatre Room') return <svg {...p}><rect x="2" y="4" width="14" height="10" rx="1"/><path d="M2 11h14M8 14v2M10 14v2M6 16h6"/></svg>
+  return <svg {...p}><path d="M2.5 9.5L9 3.5l6.5 6M4.5 8.5v7h9v-7"/></svg>
+}
+
+function ClientRightPanel({ rooms, selId, setSelId, updRoom, msgText, setMsgText, onSend }) {
+  const [submitted, setSubmitted] = useState(false)
+  const selRoom = rooms.find(r => r.id === selId) ?? null
+  const catalog  = selRoom ? getRoomCatalog(selRoom.type) : null
+
+  const handleMat = (roomId, cat, optId) => {
+    const room = rooms.find(r => r.id === roomId)
+    if (!room) return
+    updRoom(roomId, { clientMaterials: { ...(room.clientMaterials ?? {}), [cat]: optId } })
+  }
+
+  const handleSubmit = () => {
+    if (msgText.trim()) onSend()
+    setSubmitted(true)
+    setTimeout(() => setSubmitted(false), 3000)
+  }
+
+  return (
+    <div className="flex flex-col h-full bg-white">
+
+      {/* ── scrollable body ── */}
+      <div className="flex-1 overflow-y-auto">
+
+        {/* SECTION 1 — selected room header */}
+        <div className="px-5 pt-6 pb-4">
+          {selRoom ? (
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-2xl bg-[#1a3a5c]/8 flex items-center justify-center text-[#1a3a5c] shrink-0">
+                <RoomIcon type={selRoom.type} size={17} />
+              </div>
+              <div>
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1a3a5c', lineHeight: 1.1 }}>{selRoom.type}</h2>
+                <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{pxToM(selRoom.w)}m × {pxToM(selRoom.h)}m</p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center py-3 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center mb-3 text-gray-300">
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 12L11 4.5l8 7.5M5 11v8h12v-8"/>
+                </svg>
+              </div>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#d1d5db' }}>Tap any room to personalise it</p>
+            </div>
+          )}
+        </div>
+
+        {/* SECTION 2 — material swatches */}
+        {selRoom && catalog && (
+          <div className="px-5 pb-2">
+            {Object.entries(catalog.categories).map(([cat, opts]) => (
+              <div key={cat} className="mb-5">
+                <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-3">{cat}</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {opts.map(opt => {
+                    const active = selRoom.clientMaterials?.[cat] === opt.id
+                    return (
+                      <button key={opt.id} onClick={() => handleMat(selRoom.id, cat, opt.id)}
+                        className={`flex flex-col items-center gap-1.5 p-1.5 rounded-2xl transition-all cursor-pointer relative border-2 ${
+                          active ? 'border-[#1a3a5c] shadow-sm' : 'border-transparent hover:border-gray-200'
+                        }`}>
+                        <div className="w-full rounded-xl overflow-hidden" style={{ height: 48 }}>
+                          <div className="w-full h-full" style={{
+                            background: opt.pattern ? `${MAT_PATTERNS[opt.pattern]},${opt.color}` : opt.color,
+                            transition: 'opacity 0.15s',
+                          }} />
+                        </div>
+                        <span style={{ fontSize: 10, fontWeight: active ? 700 : 500, color: active ? '#1a3a5c' : '#9ca3af', lineHeight: 1.1, textAlign: 'center' }}>{opt.label}</span>
+                        {active && (
+                          <div className="absolute top-2 right-2 w-4 h-4 bg-[#1a3a5c] rounded-full flex items-center justify-center shadow-sm">
+                            <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4l2 2 3-3" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── divider ── */}
+        <div className="mx-5 h-px bg-gray-100 my-1" />
+
+        {/* SECTION 3 — your selections */}
+        <div className="px-5 py-4">
+          <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-2">Your Selections</p>
+          <div style={{ maxHeight: 200, overflowY: 'auto' }} className="space-y-0.5">
+            {rooms.filter(r => r.type !== 'Corridor').map(r => {
+              const rMats     = r.clientMaterials ?? {}
+              const rCat      = getRoomCatalog(r.type)
+              const firstCat  = Object.keys(rCat.categories)[0]
+              const chosenId  = rMats[firstCat]
+              const chosenOpt = rCat.categories[firstCat]?.find(o => o.id === chosenId)
+              const hasAny    = Object.keys(rMats).length > 0
+              const isActive  = r.id === selId
+              return (
+                <button key={r.id} onClick={() => setSelId(isActive ? null : r.id)}
+                  className={`w-full flex items-center gap-2.5 py-2 px-2.5 rounded-xl transition cursor-pointer text-left ${
+                    isActive ? 'bg-[#1a3a5c]/5' : 'hover:bg-gray-50'
+                  }`}>
+                  <div className={`shrink-0 ${hasAny ? 'text-[#1a3a5c]' : 'text-gray-300'}`}>
+                    <RoomIcon type={r.type} size={13} />
+                  </div>
+                  <span style={{ fontSize: 13, color: isActive ? '#1a3a5c' : '#374151', flex: 1, fontWeight: isActive ? 600 : 400 }}>{r.type}</span>
+                  {hasAny ? (
+                    <>
+                      <span style={{ fontSize: 11, color: '#9ca3af' }}>{chosenOpt?.label ?? '—'}</span>
+                      <div className="w-4 h-4 bg-emerald-400 rounded-full flex items-center justify-center shrink-0">
+                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4l2 2 3-3" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </div>
+                    </>
+                  ) : (
+                    <span style={{ fontSize: 11, color: '#d1d5db' }}>Not set</span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* SECTION 4 — note to builder */}
+        <div className="px-5 pb-5">
+          <textarea
+            value={msgText}
+            onChange={e => setMsgText(e.target.value)}
+            placeholder="Any requests or questions for your builder..."
+            rows={3}
+            className="w-full text-[13px] border border-gray-200 rounded-2xl px-4 py-3 text-gray-700 outline-none focus:ring-2 focus:ring-[#1a3a5c]/15 focus:border-[#1a3a5c]/30 bg-white resize-none placeholder:text-gray-300 transition leading-relaxed"
+          />
+        </div>
+      </div>
+
+      {/* SECTION 5 — submit (always visible) */}
+      <div className="px-5 py-4 bg-white border-t border-gray-100 shrink-0">
+        <button onClick={handleSubmit}
+          style={{ transition: 'background 0.3s, transform 0.1s' }}
+          className={`w-full py-3.5 rounded-2xl font-bold cursor-pointer ${
+            submitted
+              ? 'bg-emerald-500 text-white text-[13px]'
+              : 'bg-[#1a3a5c] hover:bg-[#243f63] text-white text-[14px]'
+          }`}>
+          {submitted ? (
+            <span className="flex items-center justify-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="8" r="6.5" stroke="white" strokeWidth="1.5"/>
+                <path d="M5 8l2.5 2.5 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Sent! Your builder will be in touch
+            </span>
+          ) : 'Send to builder'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── STUB so old RoomMaterialsPanel reference compiles ────────────────────────
 function RoomMaterialsPanel({ room, onBack, onMaterialChange }) {
   const catalog = getRoomCatalog(room.type)
   const mats = room.clientMaterials ?? {}
