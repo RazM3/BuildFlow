@@ -69,7 +69,7 @@ const BUDGET_TIERS = [
   { id: 'premium',    label: 'Premium finish'      },
 ]
 const STATUS_OPTS = ['Draft', 'Quote Sent', 'In Progress', 'Completed']
-const AI_MODEL    = 'claude-sonnet-4-20250514'
+const AI_MODEL    = 'claude-sonnet-4-6'
 
 // ─── smart generator constants ────────────────────────────────────────────────
 const EXTRA_ROOMS = ['Study', 'Theatre Room', 'Home Gym', 'Walk-in Pantry', 'Mudroom', 'Pool Deck', 'Alfresco', 'Workshop', 'Home Office']
