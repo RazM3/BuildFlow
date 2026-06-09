@@ -527,7 +527,7 @@ function BuilderAIFloat({ messages, loading, input, setInput, onSend, onClose, s
 }
 
 // ─── page ─────────────────────────────────────────────────────────────────────
-export default function ProjectPage() {
+export default function ProjectPage({ clientOnly = false }) {
   const { id }             = useParams()
   const navigate           = useNavigate()
   const location           = useLocation()
@@ -536,7 +536,7 @@ export default function ProjectPage() {
 
   const [project,    setProject]    = useState(null)
   const [loading,    setLoading]    = useState(true)
-  const [view,       setView]       = useState(() => searchParams.get('view') === 'client' ? 'client' : 'builder')
+  const [view,       setView]       = useState(() => clientOnly ? 'client' : (searchParams.get('view') === 'client' ? 'client' : 'builder'))
   const [rooms,      setRooms]      = useState([])
   const [openWalls,  setOpenWalls]  = useState(() => new Set())
   const [selId,      setSelId]      = useState(null)
@@ -566,6 +566,8 @@ export default function ProjectPage() {
     { from: 'client',  text: 'Can we make the master bedroom a bit larger?',   time: '2h ago' },
     { from: 'builder', text: "No problem — updated it to 4.5m × 4m for you.", time: '1h ago' },
   ])
+  const [catalogRoom,   setCatalogRoom]   = useState(null) // room id for per-room material dropdown
+  const [showHelp,      setShowHelp]      = useState(() => clientOnly && !localStorage.getItem('bf_client_help'))
   // AI state
   const [aiClientOpen,  setAiClientOpen]  = useState(false)
   const [aiBuilderOpen, setAiBuilderOpen] = useState(false)
@@ -599,6 +601,7 @@ export default function ProjectPage() {
   const budgetTierRef   = useRef(budgetTier)
   const aiClientMsgsRef  = useRef([])
   const aiBuilderMsgsRef = useRef([])
+  const messagesRef      = useRef(messages)
 
   useEffect(() => { detailFormRef.current     = detailForm },    [detailForm])
   useEffect(() => { zoomRef.current           = zoom },          [zoom])
@@ -616,6 +619,7 @@ export default function ProjectPage() {
   useEffect(() => { budgetTierRef.current     = budgetTier },    [budgetTier])
   useEffect(() => { aiClientMsgsRef.current   = aiClientMsgs },  [aiClientMsgs])
   useEffect(() => { aiBuilderMsgsRef.current  = aiBuilderMsgs }, [aiBuilderMsgs])
+  useEffect(() => { messagesRef.current       = messages },       [messages])
 
   useEffect(() => {
     if (!highlightId) return
@@ -623,7 +627,8 @@ export default function ProjectPage() {
     return () => clearTimeout(t)
   }, [highlightId])
 
-  const baseCost   = rooms.reduce((s, r) => s + cost(r) * (WALL_MULT[wallType] || 1) * (FLOOR_MULT[floorType] || 1) * (ROOF_MULT[roofType] || 1), 0)
+  const roomCostFull = r => cost(r) * (WALL_MULT[wallType]||1) * (FLOOR_MULT[r.floorMat||floorType]||1) * (ROOF_MULT[roofType]||1)
+  const baseCost   = rooms.reduce((s, r) => s + roomCostFull(r), 0)
   const withMargin = baseCost * (1 + margin / 100)
   const total      = gstOn ? withMargin * 1.1 : withMargin
   const totalSqm   = rooms.reduce((s, r) => s + (r.w / MPX) * (r.h / MPX), 0)
@@ -660,13 +665,15 @@ export default function ProjectPage() {
           notes:       data.notes       || '',
         })
         if (data.floor_plan?.length) {
-          const meta   = data.floor_plan.find(r => r.type === '_ow_')
-          const aiMeta = data.floor_plan.find(r => r.type === '_ai_')
-          const rms    = data.floor_plan.filter(r => r.type !== '_ow_' && r.type !== '_ai_')
+          const meta    = data.floor_plan.find(r => r.type === '_ow_')
+          const aiMeta  = data.floor_plan.find(r => r.type === '_ai_')
+          const msgMeta = data.floor_plan.find(r => r.type === '_msg_')
+          const rms     = data.floor_plan.filter(r => !['_ow_','_ai_','_msg_'].includes(r.type))
           setRooms(rms)
           setOpenWalls(new Set(meta?.keys ?? []))
-          if (aiMeta?.client)  setAiClientMsgs(aiMeta.client)
-          if (aiMeta?.builder) setAiBuilderMsgs(aiMeta.builder)
+          if (aiMeta?.client)      setAiClientMsgs(aiMeta.client)
+          if (aiMeta?.builder)     setAiBuilderMsgs(aiMeta.builder)
+          if (msgMeta?.messages)   setMessages(msgMeta.messages)
           uid = Math.max(...rms.map(r => r.id || 0), 0) + 1
         }
         if (data.wall_type)       setWallType(data.wall_type)
@@ -695,7 +702,7 @@ export default function ProjectPage() {
           address:         form.address     || '',
           status:          form.status      || 'Draft',
           notes:           form.notes       || '',
-          floor_plan:      [...roomsRef.current, { type: '_ow_', keys: [...openWallsRef.current] }, { type: '_ai_', client: aiClientMsgsRef.current, builder: aiBuilderMsgsRef.current }],
+          floor_plan:      [...roomsRef.current, { type: '_ow_', keys: [...openWallsRef.current] }, { type: '_ai_', client: aiClientMsgsRef.current, builder: aiBuilderMsgsRef.current }, { type: '_msg_', messages: messagesRef.current }],
           wall_type:       wallTypeRef.current,
           floor_type:      floorTypeRef.current,
           client_style:    styleRef.current,
@@ -737,7 +744,7 @@ export default function ProjectPage() {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(saveProject, 2500)
     return () => clearTimeout(saveTimerRef.current)
-  }, [rooms, openWalls, wallType, floorType, roofType, margin, gstOn, builderNotes, style, budget, finishes, budgetTier, aiClientMsgs, aiBuilderMsgs, saveProject])
+  }, [rooms, openWalls, wallType, floorType, roofType, margin, gstOn, builderNotes, style, budget, finishes, budgetTier, aiClientMsgs, aiBuilderMsgs, messages, saveProject])
 
   // ── save project details (name, address, status, notes)
   async function saveDetails() {
@@ -963,7 +970,7 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
   }, [aiPanelWidth])
 
   const sendToClient = () => {
-    const url = `${window.location.origin}${window.location.pathname}?view=client`
+    const url = `${window.location.origin}/project/${id}/client`
     navigator.clipboard.writeText(url).then(() => {
       setCopiedMsg(true)
       setTimeout(() => setCopiedMsg(false), 3000)
@@ -1034,7 +1041,8 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
 
   const sendMessage = () => {
     if (!msgText.trim()) return
-    setMessages(m => [...m, { from: 'client', text: msgText.trim(), time: 'Just now' }])
+    const from = clientOnly ? 'client' : 'builder'
+    setMessages(m => [...m, { from, text: msgText.trim(), time: 'Just now' }])
     setMsgText('')
   }
 
@@ -1065,118 +1073,133 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-[#f5f6f8]" style={{ userSelect: 'none' }}>
+    <div className={`h-screen flex flex-col overflow-hidden ${clientOnly ? 'bg-[#fafaf8]' : 'bg-[#f5f6f8]'}`} style={{ userSelect: 'none' }}>
+
+      {/* ── PREVIEW BANNER (builder previewing client view) */}
+      {!clientOnly && view === 'client' && (
+        <div className="bg-amber-500 text-white text-[11px] font-semibold px-4 py-2 flex items-center justify-between shrink-0 z-50">
+          <div className="flex items-center gap-2">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5.5" stroke="white" strokeWidth="1.2"/><circle cx="6.5" cy="6.5" r="2.5" fill="white"/></svg>
+            You are previewing the client view — this is exactly what your client sees
+          </div>
+          <button onClick={() => setView('builder')}
+            className="flex items-center gap-1 bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg transition cursor-pointer">
+            ← Return to builder view
+          </button>
+        </div>
+      )}
 
       {/* ── TOP BAR */}
       <div className="h-12 bg-white border-b border-gray-100 flex items-center px-4 gap-3 shrink-0 z-20">
-        <button onClick={() => navigate('/')} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 11L5 7l4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        </button>
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-6 h-6 bg-[#1a3a5c] rounded-lg flex items-center justify-center shrink-0">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <rect x="1.5" y="5" width="9" height="6" rx="0.8" fill="white" fillOpacity="0.9"/>
-              <rect x="3" y="2.5" width="6" height="3.5" rx="0.6" fill="white" fillOpacity="0.6"/>
-            </svg>
-          </div>
-          <span className="font-semibold text-[#1a3a5c] text-sm truncate">{projectName}</span>
-          <span className="text-gray-200 hidden md:block">·</span>
-          <span className="text-gray-400 text-xs hidden md:block truncate">{projectAddr}</span>
-        </div>
-
-        <div className="ml-auto flex items-center gap-2 shrink-0">
-          {/* Save status */}
-          <span className={`text-[10px] font-medium transition-all ${
-            saveStatus === 'unsaved' ? 'text-amber-500' :
-            saveStatus === 'saving'  ? 'text-gray-400'  :
-            saveStatus === 'saved'   ? 'text-emerald-500' : 'text-transparent'
-          }`}>
-            {saveStatus === 'unsaved' ? '● Unsaved' :
-             saveStatus === 'saving'  ? 'Saving…'   :
-             saveStatus === 'saved'   ? '✓ Saved'   : '·'}
-          </span>
-
-          {/* Export PDF */}
-          <button
-            onClick={handleExportPDF}
-            disabled={rooms.length === 0}
-            className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-[#1a3a5c] border border-gray-200 hover:border-gray-300 px-3 py-1.5 rounded-lg transition cursor-pointer disabled:opacity-30"
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5l3 3 3-3M1 9v1a1 1 0 001 1h8a1 1 0 001-1V9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            Export PDF
-          </button>
-
-          {/* Generate floor plan */}
-          <button
-            onClick={() => setShowTemplates(true)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-[#1a3a5c] border border-gray-200 hover:border-gray-300 px-3 py-1.5 rounded-lg transition cursor-pointer"
-          >
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1l1.2 2.4 2.6.4-1.9 1.8.5 2.6-2.4-1.3-2.4 1.3.5-2.6L2.7 3.8l2.6-.4z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/><path d="M2 10.5h9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-            Generate floor plan
-          </button>
-
-          {/* Send to client */}
-          <div className="relative">
-            <button onClick={sendToClient}
-              className="flex items-center gap-1.5 text-xs font-semibold text-white bg-blue-500 hover:bg-blue-600 px-3 py-1.5 rounded-lg transition cursor-pointer">
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 6h10M6.5 1.5L11 6l-4.5 4.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              Send to client
-            </button>
-            {copiedMsg && (
-              <div className="absolute right-0 top-9 bg-[#1a3a5c] text-white text-[11px] font-medium px-3 py-2 rounded-xl shadow-lg whitespace-nowrap z-50 flex items-center gap-2 modal-enter">
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="#4ade80" strokeWidth="1.5"/><path d="M3.5 6l2 2 3-3" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                Link copied — send this to your client
+        {clientOnly ? (
+          /* ── CLIENT HEADER */
+          <>
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-[#1a3a5c] rounded-xl flex items-center justify-center shrink-0">
+                <svg width="13" height="13" viewBox="0 0 12 12" fill="none">
+                  <rect x="1.5" y="5" width="9" height="6" rx="0.8" fill="white" fillOpacity="0.9"/>
+                  <rect x="3" y="2.5" width="6" height="3.5" rx="0.6" fill="white" fillOpacity="0.6"/>
+                </svg>
               </div>
-            )}
-          </div>
-
-          {/* AI buttons */}
-          {view === 'client' && (
-            <button onClick={() => setAiClientOpen(o => !o)}
-              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer ${
-                aiClientOpen
-                  ? 'bg-[#1a3a5c] text-white shadow-sm'
-                  : 'bg-gradient-to-r from-[#1a3a5c] to-[#2d6a9f] text-white hover:from-[#243f63] hover:to-[#3a7ab5] shadow-sm'
-              }`}>
-              <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                <path d="M6 1v2M6 9v2M1 6h2M9 6h2M2.6 2.6l1.4 1.4M8 8l1.4 1.4M9.4 2.6L8 4M4 8l-1.4 1.4" stroke="white" strokeWidth="1.3" strokeLinecap="round"/>
-              </svg>
-              Ask AI
-            </button>
-          )}
-          {view === 'builder' && (
-            <button onClick={() => setAiBuilderOpen(o => !o)}
-              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition cursor-pointer ${
-                aiBuilderOpen
-                  ? 'bg-[#1a3a5c] text-white border-[#1a3a5c]'
-                  : 'text-[#1a3a5c] border-[#1a3a5c]/25 hover:border-[#1a3a5c]/50 hover:bg-[#1a3a5c]/5'
-              }`}>
-              <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                <path d="M6 1v2M6 9v2M1 6h2M9 6h2M2.6 2.6l1.4 1.4M8 8l1.4 1.4M9.4 2.6L8 4M4 8l-1.4 1.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-              </svg>
-              AI Advisor
-            </button>
-          )}
-
-          {/* View toggle */}
-          <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
-            {['builder', 'client'].map(v => (
-              <button key={v} onClick={() => setView(v)}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition cursor-pointer ${
-                  view === v ? 'bg-white text-[#1a3a5c] shadow-sm' : 'text-gray-400 hover:text-gray-600'
+              <div>
+                <p className="font-bold text-[#1a3a5c] text-sm leading-none">{projectName}</p>
+                {projectAddr && <p className="text-gray-400 text-[10px] mt-0.5">{projectAddr}</p>}
+              </div>
+            </div>
+            <div className="ml-auto flex items-center gap-2.5">
+              <span className={`text-[10px] font-medium ${saveStatus==='saved'?'text-emerald-500':saveStatus==='saving'?'text-gray-400':'text-transparent'}`}>
+                {saveStatus==='saved'?'✓ Saved':saveStatus==='saving'?'Saving…':'·'}
+              </span>
+              <button onClick={() => setAiClientOpen(o => !o)}
+                className={`flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl transition cursor-pointer shadow-sm ${
+                  aiClientOpen ? 'bg-[#1a3a5c] text-white' : 'bg-gradient-to-r from-[#1a3a5c] to-[#2d6a9f] text-white hover:shadow-md'
                 }`}>
-                {v === 'builder' ? 'Builder' : 'Client'}
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M6 1v2M6 9v2M1 6h2M9 6h2M2.6 2.6l1.4 1.4M8 8l1.4 1.4M9.4 2.6L8 4M4 8l-1.4 1.4" stroke="white" strokeWidth="1.3" strokeLinecap="round"/>
+                </svg>
+                Design with AI
               </button>
-            ))}
-          </div>
-        </div>
+            </div>
+          </>
+        ) : (
+          /* ── BUILDER HEADER */
+          <>
+            <button onClick={() => navigate('/')} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 11L5 7l4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-6 h-6 bg-[#1a3a5c] rounded-lg flex items-center justify-center shrink-0">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <rect x="1.5" y="5" width="9" height="6" rx="0.8" fill="white" fillOpacity="0.9"/>
+                  <rect x="3" y="2.5" width="6" height="3.5" rx="0.6" fill="white" fillOpacity="0.6"/>
+                </svg>
+              </div>
+              <span className="font-semibold text-[#1a3a5c] text-sm truncate">{projectName}</span>
+              <span className="text-gray-200 hidden md:block">·</span>
+              <span className="text-gray-400 text-xs hidden md:block truncate">{projectAddr}</span>
+            </div>
+            <div className="ml-auto flex items-center gap-2 shrink-0">
+              <span className={`text-[10px] font-medium transition-all ${
+                saveStatus === 'unsaved' ? 'text-amber-500' :
+                saveStatus === 'saving'  ? 'text-gray-400'  :
+                saveStatus === 'saved'   ? 'text-emerald-500' : 'text-transparent'
+              }`}>
+                {saveStatus === 'unsaved' ? '● Unsaved' : saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? '✓ Saved' : '·'}
+              </span>
+              <button onClick={handleExportPDF} disabled={rooms.length === 0}
+                className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-[#1a3a5c] border border-gray-200 hover:border-gray-300 px-3 py-1.5 rounded-lg transition cursor-pointer disabled:opacity-30">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5l3 3 3-3M1 9v1a1 1 0 001 1h8a1 1 0 001-1V9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                Export PDF
+              </button>
+              <button onClick={() => setShowTemplates(true)}
+                className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-[#1a3a5c] border border-gray-200 hover:border-gray-300 px-3 py-1.5 rounded-lg transition cursor-pointer">
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1l1.2 2.4 2.6.4-1.9 1.8.5 2.6-2.4-1.3-2.4 1.3.5-2.6L2.7 3.8l2.6-.4z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/><path d="M2 10.5h9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                Generate floor plan
+              </button>
+              <div className="relative">
+                <button onClick={sendToClient}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-white bg-blue-500 hover:bg-blue-600 px-3 py-1.5 rounded-lg transition cursor-pointer">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 6h10M6.5 1.5L11 6l-4.5 4.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  Send to client
+                </button>
+                {copiedMsg && (
+                  <div className="absolute right-0 top-9 bg-[#1a3a5c] text-white text-[11px] font-medium px-3 py-2 rounded-xl shadow-lg whitespace-nowrap z-50 flex items-center gap-2 modal-enter">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="#4ade80" strokeWidth="1.5"/><path d="M3.5 6l2 2 3-3" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    Client link copied!
+                  </div>
+                )}
+              </div>
+              {view === 'builder' && (
+                <button onClick={() => setAiBuilderOpen(o => !o)}
+                  className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition cursor-pointer ${
+                    aiBuilderOpen ? 'bg-[#1a3a5c] text-white border-[#1a3a5c]' : 'text-[#1a3a5c] border-[#1a3a5c]/25 hover:border-[#1a3a5c]/50 hover:bg-[#1a3a5c]/5'
+                  }`}>
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                    <path d="M6 1v2M6 9v2M1 6h2M9 6h2M2.6 2.6l1.4 1.4M8 8l1.4 1.4M9.4 2.6L8 4M4 8l-1.4 1.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                  </svg>
+                  AI Advisor
+                </button>
+              )}
+              <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+                <button onClick={() => setView('builder')}
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition cursor-pointer ${view === 'builder' ? 'bg-white text-[#1a3a5c] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
+                  Builder
+                </button>
+                <button onClick={() => setView('client')}
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition cursor-pointer ${view === 'client' ? 'bg-white text-[#1a3a5c] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
+                  Preview Client
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* ── 3-COLUMN BODY */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* ── LEFT PANEL */}
-        <div className="w-[200px] shrink-0 bg-white border-r border-gray-100 flex flex-col overflow-hidden">
+        {/* ── LEFT PANEL — builder only */}
+        <div className={`w-[200px] shrink-0 bg-white border-r border-gray-100 flex flex-col overflow-hidden ${(clientOnly || view === 'client') ? 'hidden' : ''}`}>
           <div className="px-4 py-3 border-b border-gray-50 shrink-0">
             <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-1.5">Project</p>
             <p className="font-semibold text-[#1a3a5c] text-sm leading-tight">{projectName}</p>
@@ -1225,43 +1248,46 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
 
         {/* ── CANVAS AREA */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="h-10 bg-white border-b border-gray-100 flex items-center px-4 gap-1 shrink-0">
-            {[
-              { id: 'select',  label: 'Select',  icon: <IconSelect /> },
-              { id: 'draw',    label: 'Draw',    icon: <IconDraw /> },
-              { id: 'measure', label: 'Measure', icon: <IconRuler /> },
-            ].map(t => (
-              <button key={t.id} title={t.label} onClick={() => setTool(t.id)}
-                className={`w-7 h-7 flex items-center justify-center rounded-md transition cursor-pointer ${
-                  tool === t.id ? 'bg-[#1a3a5c] text-white' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
-                }`}>
-                {t.icon}
-              </button>
-            ))}
-            <div className="w-px h-4 bg-gray-100 mx-1" />
-            <button onClick={() => setZoom(z => Math.min(2, +(z + 0.25).toFixed(2)))}
-              className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition cursor-pointer">
-              <IconZoomIn />
-            </button>
-            <button onClick={() => setZoom(z => Math.max(0.25, +(z - 0.25).toFixed(2)))}
-              className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition cursor-pointer">
-              <IconZoomOut />
-            </button>
-            <div className="w-px h-4 bg-gray-100 mx-1" />
-            <button onClick={undo} disabled={!history.length}
-              className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-25 transition cursor-pointer">
-              <IconUndo />
-            </button>
-            <div className="ml-auto flex items-center gap-3">
-              <span className="text-[11px] text-gray-300">{Math.round(zoom * 100)}%</span>
-              {selRoom && (
-                <button onClick={delSel}
-                  className="text-[10px] text-red-400 hover:text-red-600 border border-red-100 hover:border-red-200 rounded-md px-2 py-1 transition cursor-pointer">
-                  Delete
+          {/* Toolbar — builder only */}
+          {!clientOnly && (
+            <div className="h-10 bg-white border-b border-gray-100 flex items-center px-4 gap-1 shrink-0">
+              {[
+                { id: 'select',  label: 'Select',  icon: <IconSelect /> },
+                { id: 'draw',    label: 'Draw',    icon: <IconDraw /> },
+                { id: 'measure', label: 'Measure', icon: <IconRuler /> },
+              ].map(t => (
+                <button key={t.id} title={t.label} onClick={() => setTool(t.id)}
+                  className={`w-7 h-7 flex items-center justify-center rounded-md transition cursor-pointer ${
+                    tool === t.id ? 'bg-[#1a3a5c] text-white' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                  }`}>
+                  {t.icon}
                 </button>
-              )}
+              ))}
+              <div className="w-px h-4 bg-gray-100 mx-1" />
+              <button onClick={() => setZoom(z => Math.min(2, +(z + 0.25).toFixed(2)))}
+                className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition cursor-pointer">
+                <IconZoomIn />
+              </button>
+              <button onClick={() => setZoom(z => Math.max(0.25, +(z - 0.25).toFixed(2)))}
+                className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition cursor-pointer">
+                <IconZoomOut />
+              </button>
+              <div className="w-px h-4 bg-gray-100 mx-1" />
+              <button onClick={undo} disabled={!history.length}
+                className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-25 transition cursor-pointer">
+                <IconUndo />
+              </button>
+              <div className="ml-auto flex items-center gap-3">
+                <span className="text-[11px] text-gray-300">{Math.round(zoom * 100)}%</span>
+                {selRoom && (
+                  <button onClick={delSel}
+                    className="text-[10px] text-red-400 hover:text-red-600 border border-red-100 hover:border-red-200 rounded-md px-2 py-1 transition cursor-pointer">
+                    Delete
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="flex-1 overflow-auto">
             <div style={{ position: 'relative', width: CW * zoom, height: CH * zoom }}>
@@ -1304,17 +1330,40 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                 {rooms.map(r => (
                   <RoomBlock key={r.id} room={r} selected={r.id === selId} view={view} clientStyle={style} cost={cost(r)}
                     highlighted={r.id === highlightId}
+                    builderMode={!clientOnly && view === 'builder'}
+                    roomCost={roomCostFull(r)}
+                    floorMat={r.floorMat || floorType}
+                    onFloorChange={mat => updRoom(r.id, { floorMat: mat })}
                     onMouseDown={e => onRoomDown(e, r.id)}
                     onHandleDown={(e, dir) => onHandleDown(e, r.id, dir)}
                   />
                 ))}
+                {/* Client first-load help tooltip */}
+                {clientOnly && showHelp && rooms.length > 0 && (
+                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-auto">
+                    <div className="bg-[#1a3a5c] text-white rounded-2xl px-5 py-3.5 shadow-2xl flex items-start gap-3 max-w-xs fade-up">
+                      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="shrink-0 mt-0.5">
+                        <circle cx="9" cy="9" r="8" stroke="white" strokeWidth="1.4" strokeOpacity="0.6"/>
+                        <path d="M9 8v5M9 5.5v1" stroke="white" strokeWidth="1.6" strokeLinecap="round"/>
+                      </svg>
+                      <div>
+                        <p className="font-bold text-sm">Your floor plan is ready</p>
+                        <p className="text-white/70 text-[11px] mt-1 leading-relaxed">Click any room to select and resize it, or use <strong className="text-white">Design with AI</strong> to make changes by chatting.</p>
+                      </div>
+                      <button onClick={() => { setShowHelp(false); localStorage.setItem('bf_client_help', '1') }}
+                        className="text-white/50 hover:text-white transition cursor-pointer ml-1 shrink-0">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2L2 10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
 
         {/* ── RIGHT PANEL / AI PANEL */}
-        {view === 'client' && aiClientOpen ? (
+        {(view === 'client' || clientOnly) && aiClientOpen ? (
           <ClientAIPanel
             messages={aiClientMsgs}
             loading={aiLoading}
@@ -1328,8 +1377,10 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
             onResizeStart={handleAIPanelResize}
           />
         ) : (
-          <div className="w-[240px] shrink-0 bg-white border-l border-gray-100 flex flex-col overflow-y-auto">
-            {view === 'builder' ? (
+          <div className={`shrink-0 flex flex-col overflow-y-auto border-l ${
+            clientOnly ? 'w-[260px] bg-[#fafaf8] border-gray-100' : 'w-[240px] bg-white border-gray-100'
+          }`}>
+            {!clientOnly && view === 'builder' ? (
               <>
                 {/* Tab bar */}
                 <div className="flex border-b border-gray-100 shrink-0">
@@ -1365,6 +1416,8 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
               </>
             ) : (
               <ClientPanel
+                clientOnly={clientOnly}
+                onOpenAI={() => setAiClientOpen(true)}
                 style={style} setStyle={setStyle}
                 budgetTier={budgetTier} setBudgetTier={setBudgetTier}
                 finishes={finishes} setFinishes={setFinishes}
@@ -1571,94 +1624,132 @@ function BuilderPanel({
 }
 
 // ─── client panel ─────────────────────────────────────────────────────────────
-function ClientPanel({ style, setStyle, budgetTier, setBudgetTier, finishes, setFinishes, msgText, setMsgText, messages, onSend }) {
+const CLIENT_BUDGET_TIERS = [
+  { id: 'lean',    label: 'Keep it lean',  icon: '🌿', desc: 'Smart choices, great result' },
+  { id: 'mid',     label: 'Mid range',     icon: '✨', desc: 'The sweet spot' },
+  { id: 'premium', label: 'Go premium',    icon: '🏆', desc: 'Best of everything' },
+]
+
+function ClientPanel({ clientOnly, onOpenAI, style, setStyle, budgetTier, setBudgetTier, finishes, setFinishes, msgText, setMsgText, messages, onSend }) {
   const theme = STYLE_THEMES[style] ?? STYLE_THEMES.Modern
   return (
-    <>
-      {/* Style picker */}
-      <div className="px-4 py-4 border-b border-gray-50">
-        <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-2">Design Style</p>
-        <div className="grid grid-cols-2 gap-1.5">
-          {STYLES.map(s => {
-            const t = STYLE_THEMES[s]
-            return (
-              <button key={s} onClick={() => setStyle(s)}
-                className={`py-2.5 rounded-xl text-[11px] font-semibold transition cursor-pointer border-2 flex flex-col items-center gap-1 ${
-                  style === s ? 'border-[#1a3a5c] shadow-sm' : 'border-gray-100 hover:border-gray-200'
-                }`}
-                style={style === s ? { background: t.fill, color: t.wall } : {}}>
-                <div className="flex gap-0.5">
-                  <div className="w-3 h-3 rounded-sm border" style={{ background: t.fill, borderColor: t.wall }} />
-                  <div className="w-1.5 h-3 rounded-sm" style={{ background: t.wall }} />
-                </div>
-                <span className={style === s ? '' : 'text-gray-500'}>{s}</span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
+    <div className="flex flex-col h-full overflow-y-auto">
 
-      {/* Budget tier */}
-      <div className="px-4 py-4 border-b border-gray-50">
-        <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-2">Budget Preference</p>
-        <div className="space-y-1.5">
-          {BUDGET_TIERS.map(t => (
-            <button key={t.id} onClick={() => setBudgetTier(t.id)}
-              className={`w-full text-left px-3 py-2.5 rounded-xl text-[12px] font-semibold transition cursor-pointer border-2 ${
-                budgetTier === t.id
-                  ? 'bg-[#1a3a5c] text-white border-[#1a3a5c]'
-                  : 'bg-white text-gray-500 border-gray-100 hover:border-gray-200 hover:text-gray-700'
-              }`}>
-              {budgetTier === t.id && <span className="mr-1.5">✓</span>}{t.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Finish preferences */}
-      <div className="px-4 py-4 border-b border-gray-50">
-        <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-3">Finish Preferences</p>
-        <div className="space-y-2.5">
-          {Object.entries(FINISHES).map(([key, opts]) => (
-            <div key={key}>
-              <p className="text-[10px] text-gray-400 mb-1">{key}</p>
-              <select value={finishes[key]} onChange={e => setFinishes(f => ({ ...f, [key]: e.target.value }))}
-                className="w-full text-[11px] border border-gray-200 rounded-lg px-2 py-1.5 text-[#1a3a5c] bg-white outline-none cursor-pointer focus:ring-1 focus:ring-[#1a3a5c]/20">
-                {opts.map(o => <option key={o}>{o}</option>)}
-              </select>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Message builder */}
-      <div className="px-4 py-4 flex flex-col flex-1">
-        <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-2">Message Builder</p>
-        <div className="flex-1 space-y-2 overflow-y-auto max-h-36 mb-3">
-          {messages.map((m, i) => (
-            <div key={i} className={`rounded-xl px-3 py-2 text-[11px] ${m.from === 'client' ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-600'}`}>
-              <p className="font-bold text-[9px] uppercase tracking-wide mb-0.5">{m.from}</p>
-              {m.text}
-            </div>
-          ))}
-        </div>
-        <div className="flex gap-1.5 mb-3">
-          <input type="text" value={msgText} onChange={e => setMsgText(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && onSend()} placeholder="Type a message…"
-            className="flex-1 text-[11px] border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-1 focus:ring-[#1a3a5c]/20 focus:border-[#1a3a5c]/30" />
-          <button onClick={onSend} className="bg-[#1a3a5c] text-white rounded-xl px-3 py-2 hover:bg-[#243f63] transition cursor-pointer">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 6h10M6.5 1.5L11 6l-4.5 4.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      {/* Design with AI — prominent CTA at top */}
+      {clientOnly && (
+        <div className="px-4 pt-5 pb-3">
+          <button onClick={onOpenAI}
+            className="w-full flex items-center justify-center gap-2.5 bg-gradient-to-r from-[#1a3a5c] to-[#2d6a9f] hover:from-[#243f63] hover:to-[#3a7ab5] text-white rounded-2xl py-3.5 font-bold text-sm shadow-md hover:shadow-lg transition cursor-pointer">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M7 1v2.5M7 10.5V13M1 7h2.5M10.5 7H13M3 3l1.8 1.8M9.2 9.2L11 11M11 3l-1.8 1.8M4.8 9.2L3 11" stroke="white" strokeWidth="1.4" strokeLinecap="round"/>
+            </svg>
+            Design with AI
           </button>
+          <p className="text-center text-[10px] text-gray-400 mt-2">Chat to reshape rooms, open walls, and more</p>
         </div>
-        {/* Submit design */}
-        <button
-          onClick={() => alert('Design submitted to your builder!')}
-          className="w-full py-3 rounded-xl text-[13px] font-bold text-white transition cursor-pointer"
-          style={{ background: `linear-gradient(135deg, ${theme.wall}, ${theme.wall}cc)` }}>
-          Submit Design
-        </button>
+      )}
+
+      <div className={clientOnly ? 'border-t border-gray-100' : ''}>
+
+        {/* Style picker */}
+        <div className="px-4 py-4 border-b border-gray-50/80">
+          <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-2.5">Design Style</p>
+          <div className="grid grid-cols-2 gap-1.5">
+            {STYLES.map(s => {
+              const t = STYLE_THEMES[s]
+              return (
+                <button key={s} onClick={() => setStyle(s)}
+                  className={`py-3 rounded-2xl text-[11px] font-semibold transition cursor-pointer border-2 flex flex-col items-center gap-1.5 ${
+                    style === s ? 'border-[#1a3a5c] shadow-sm' : 'border-gray-100 hover:border-gray-200 bg-white'
+                  }`}
+                  style={style === s ? { background: t.fill, color: t.wall } : {}}>
+                  <div className="flex gap-0.5">
+                    <div className="w-3.5 h-3.5 rounded-sm border" style={{ background: t.fill, borderColor: t.wall }} />
+                    <div className="w-2 h-3.5 rounded-sm" style={{ background: t.wall }} />
+                  </div>
+                  <span className={style === s ? 'font-bold' : 'text-gray-500'}>{s}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Budget comfort */}
+        <div className="px-4 py-4 border-b border-gray-50/80">
+          <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-2.5">Budget Comfort</p>
+          <div className="space-y-1.5">
+            {CLIENT_BUDGET_TIERS.map(t => (
+              <button key={t.id} onClick={() => setBudgetTier(t.id)}
+                className={`w-full text-left px-3 py-2.5 rounded-xl text-[11px] font-semibold transition cursor-pointer border-2 flex items-center gap-2.5 ${
+                  budgetTier === t.id
+                    ? 'bg-[#1a3a5c] text-white border-[#1a3a5c]'
+                    : 'bg-white text-gray-500 border-gray-100 hover:border-gray-200 hover:text-gray-700'
+                }`}>
+                <span className="text-base leading-none">{t.icon}</span>
+                <div>
+                  <div>{t.label}</div>
+                  <div className={`text-[9px] font-normal mt-0.5 ${budgetTier === t.id ? 'text-white/70' : 'text-gray-400'}`}>{t.desc}</div>
+                </div>
+                {budgetTier === t.id && <svg className="ml-auto shrink-0" width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5.5" fill="white" fillOpacity="0.25"/><path d="M4 6.5l2 2 3-3" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Finish preferences */}
+        <div className="px-4 py-4 border-b border-gray-50/80">
+          <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-3">Finish Preferences</p>
+          <p className="text-[10px] text-gray-400 mb-2.5 leading-relaxed">These are saved as notes to your builder — no prices involved.</p>
+          <div className="space-y-2.5">
+            {Object.entries(FINISHES).map(([key, opts]) => (
+              <div key={key}>
+                <p className="text-[10px] text-gray-400 mb-1">{key}</p>
+                <select value={finishes[key]} onChange={e => setFinishes(f => ({ ...f, [key]: e.target.value }))}
+                  className="w-full text-[11px] border border-gray-200 rounded-lg px-2 py-1.5 text-[#1a3a5c] bg-white outline-none cursor-pointer focus:ring-1 focus:ring-[#1a3a5c]/20">
+                  {opts.map(o => <option key={o}>{o}</option>)}
+                </select>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Message builder */}
+        <div className="px-4 py-4 flex flex-col">
+          <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-2.5">
+            {clientOnly ? 'Message Your Builder' : 'Client Messages'}
+          </p>
+          {messages.length > 0 && (
+            <div className="space-y-2 mb-3 max-h-32 overflow-y-auto">
+              {messages.map((m, i) => (
+                <div key={i} className={`rounded-xl px-3 py-2 text-[11px] ${
+                  m.from === 'client' ? 'bg-[#1a3a5c]/8 text-[#1a3a5c]' : 'bg-gray-50 text-gray-600'
+                }`}>
+                  <p className="font-bold text-[9px] uppercase tracking-wide mb-0.5 opacity-60">{m.from}</p>
+                  {m.text}
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-1.5 mb-3">
+            <input type="text" value={msgText} onChange={e => setMsgText(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && onSend()} placeholder="Type a message…"
+              className="flex-1 text-[11px] border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-1 focus:ring-[#1a3a5c]/20 focus:border-[#1a3a5c]/30 bg-white" />
+            <button onClick={onSend} className="bg-[#1a3a5c] text-white rounded-xl px-3 py-2 hover:bg-[#243f63] transition cursor-pointer">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 6h10M6.5 1.5L11 6l-4.5 4.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+          </div>
+
+          {/* Submit Design — client only */}
+          {clientOnly && (
+            <button onClick={onSend}
+              className="w-full py-3.5 rounded-2xl text-[13px] font-bold text-white transition cursor-pointer shadow-md hover:shadow-lg"
+              style={{ background: `linear-gradient(135deg, ${theme.wall}, ${theme.wall}cc)` }}>
+              Submit My Design
+            </button>
+          )}
+        </div>
       </div>
-    </>
+    </div>
   )
 }
 
@@ -1908,11 +1999,13 @@ const HPOS = {
 }
 const HCURSOR = { nw: 'nw-resize', n: 'n-resize', ne: 'ne-resize', e: 'e-resize', se: 'se-resize', s: 's-resize', sw: 'sw-resize', w: 'w-resize' }
 
-function RoomBlock({ room, selected, view, clientStyle, cost, highlighted, onMouseDown, onHandleDown }) {
+function RoomBlock({ room, selected, view, clientStyle, cost, highlighted, builderMode, roomCost, floorMat, onFloorChange, onMouseDown, onHandleDown }) {
+  const [catalogOpen, setCatalogOpen] = useState(false)
   const isCorridor = room.type === 'Corridor'
   const theme = STYLE_THEMES[clientStyle] ?? null
-  const fillColor = (view === 'client' && theme) ? theme.fill : '#fff'
-  const textColor = (view === 'client' && theme) ? theme.wall : '#1c1c1c'
+  const isClientView = view === 'client' || !builderMode
+  const fillColor = (isClientView && theme) ? theme.fill : '#fff'
+  const textColor = (isClientView && theme) ? theme.wall : '#1c1c1c'
   return (
     <div onMouseDown={onMouseDown}
       className={highlighted ? 'ai-highlight' : undefined}
@@ -1928,12 +2021,51 @@ function RoomBlock({ room, selected, view, clientStyle, cost, highlighted, onMou
           style={{ fontSize: isCorridor ? 8 : 9, color: textColor }}>
           {isCorridor ? 'HALL' : room.type.toUpperCase()}
         </span>
-        {!isCorridor && (
-          <span className="mt-0.5" style={{ fontSize: 8, color: textColor, opacity: 0.4 }}>
-            {pxToM(room.w)}m × {pxToM(room.h)}m
-          </span>
+        {/* Builder: show dimensions + cost + material */}
+        {builderMode && !isCorridor && (
+          <>
+            <span style={{ fontSize: 7.5, color: '#888', marginTop: 2 }}>
+              {pxToM(room.w)}m × {pxToM(room.h)}m
+            </span>
+            <span style={{ fontSize: 7.5, color: '#1a3a5c', fontWeight: 700, marginTop: 1 }}>
+              {fmtAUD(roomCost)}
+            </span>
+            {floorMat && (
+              <span style={{ fontSize: 6.5, color: '#aaa', marginTop: 1 }}>
+                {floorMat}
+              </span>
+            )}
+          </>
         )}
       </div>
+
+      {/* Catalog icon — builder mode only */}
+      {builderMode && !isCorridor && (
+        <div className="absolute top-1 right-1 z-20" onMouseDown={e => e.stopPropagation()}>
+          <button onClick={e => { e.stopPropagation(); setCatalogOpen(o => !o) }}
+            className="w-4 h-4 bg-white/70 hover:bg-white border border-gray-100 rounded text-gray-400 hover:text-[#1a3a5c] flex items-center justify-center transition shadow-sm">
+            <svg width="7" height="7" viewBox="0 0 8 8" fill="none">
+              <circle cx="4" cy="4" r="1.2" stroke="currentColor" strokeWidth="1"/>
+              <circle cx="4" cy="4" r="3" stroke="currentColor" strokeWidth="0.7"/>
+            </svg>
+          </button>
+          {catalogOpen && (
+            <div className="absolute right-0 top-5 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 w-[110px]"
+              onClick={e => e.stopPropagation()}>
+              <p className="px-2.5 py-1 text-[9px] uppercase tracking-widest text-gray-400 font-semibold border-b border-gray-50 mb-0.5">Flooring</p>
+              {FLOOR_OPTS.map(o => (
+                <button key={o} onClick={() => { onFloorChange(o); setCatalogOpen(false) }}
+                  className={`w-full text-left px-2.5 py-1.5 text-[10px] transition cursor-pointer ${
+                    o === floorMat ? 'text-[#1a3a5c] font-bold bg-[#1a3a5c]/5' : 'text-gray-500 hover:bg-gray-50'
+                  }`}>
+                  {o}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {selected && HANDLES.map(h => (
         <div key={h} onMouseDown={e => onHandleDown(e, h)} style={{
           position: 'absolute', width: 9, height: 9, background: 'white',
