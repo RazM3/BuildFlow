@@ -855,7 +855,12 @@ export default function ProjectPage({ clientOnly = false }) {
     const { error } = await supabase
       .from('projects')
       .update({
-        floor_plan:      [...roomsRef.current, { type: '_ow_', keys: [...openWallsRef.current] }],
+        floor_plan: [
+          ...roomsRef.current,
+          { type: '_ow_',  keys:     [...openWallsRef.current] },
+          { type: '_ai_',  client:   aiClientMsgsRef.current, builder: aiBuilderMsgsRef.current },
+          { type: '_msg_', messages: messagesRef.current },
+        ],
         wall_type:       wallTypeRef.current,
         floor_type:      floorTypeRef.current,
         client_style:    styleRef.current,
@@ -867,6 +872,11 @@ export default function ProjectPage({ clientOnly = false }) {
     if (!error) setTimeout(() => setSaveStatus('idle'), 2000)
   }, [id, isNew, navigate])
 
+  const saveNow = useCallback(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveProject()
+  }, [saveProject])
+
   useEffect(() => {
     if (!hasLoadedRef.current) return
     setSaveStatus('unsaved')
@@ -874,6 +884,80 @@ export default function ProjectPage({ clientOnly = false }) {
     saveTimerRef.current = setTimeout(saveProject, 2500)
     return () => clearTimeout(saveTimerRef.current)
   }, [rooms, openWalls, wallType, floorType, roofType, margin, gstOn, builderNotes, style, budget, finishes, budgetTier, aiClientMsgs, aiBuilderMsgs, messages, saveProject])
+
+  // ── realtime / presence / toast
+  const [toast,        setToast]        = useState('')
+  const [clientOnline, setClientOnline] = useState(false)
+  const toastTimer = useRef(null)
+
+  const showToast = useCallback((msg) => {
+    setToast(msg)
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    toastTimer.current = setTimeout(() => setToast(''), 2200)
+  }, [])
+
+  // client: 30-second auto-save + toast
+  useEffect(() => {
+    if (!clientOnly || isNew) return
+    const t = setInterval(async () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+      await saveProject()
+      showToast('Changes saved')
+    }, 30000)
+    return () => clearInterval(t)
+  }, [clientOnly, isNew, saveProject, showToast])
+
+  // realtime sync
+  useEffect(() => {
+    if (!id || isNew) return
+    const channels = []
+
+    // ── presence: who is viewing
+    const presKey = clientOnly ? 'client' : 'builder'
+    const presChannel = supabase.channel(`presence:${id}`, { config: { presence: { key: presKey } } })
+    if (clientOnly) {
+      presChannel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') await presChannel.track({ role: 'client', at: Date.now() })
+      })
+    } else {
+      presChannel
+        .on('presence', { event: 'sync' }, () => {
+          const state = presChannel.presenceState()
+          const online = Object.values(state).flat().some(u => u.role === 'client')
+          setClientOnline(online)
+        })
+        .subscribe()
+    }
+    channels.push(presChannel)
+
+    // ── data sync: builder subscribes to live project updates
+    if (!clientOnly) {
+      const dataChannel = supabase.channel(`db:project:${id}`)
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'projects', filter: `id=eq.${id}` }, payload => {
+          const fp = payload.new?.floor_plan
+          if (!fp) return
+          const rms = fp.filter(r => !['_ow_','_ai_','_msg_'].includes(r.type))
+          // highlight any room whose clientMaterials changed
+          const prev = roomsRef.current
+          rms.forEach(nr => {
+            const pr = prev.find(r => r.id === nr.id)
+            if (JSON.stringify(nr.clientMaterials) !== JSON.stringify(pr?.clientMaterials)) {
+              setHighlightId(nr.id)
+              setTimeout(() => setHighlightId(null), 2500)
+            }
+          })
+          setRooms(rms)
+          const owMeta = fp.find(r => r.type === '_ow_')
+          if (owMeta) setOpenWalls(new Set(owMeta.keys ?? []))
+          const msgMeta = fp.find(r => r.type === '_msg_')
+          if (msgMeta?.messages) setMessages(msgMeta.messages)
+        })
+        .subscribe()
+      channels.push(dataChannel)
+    }
+
+    return () => channels.forEach(c => supabase.removeChannel(c))
+  }, [id, isNew, clientOnly])
 
   // ── save project details (name, address, status, notes)
   async function saveDetails() {
@@ -1236,8 +1320,10 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
               </div>
             </div>
             <div className="ml-auto flex items-center gap-2.5">
-              <span className={`text-[10px] font-medium ${saveStatus==='saved'?'text-emerald-500':saveStatus==='saving'?'text-gray-400':'text-transparent'}`}>
-                {saveStatus==='saved'?'✓ Saved':saveStatus==='saving'?'Saving…':'·'}
+              <span className={`text-[10px] font-medium flex items-center gap-1 ${saveStatus==='saved'?'text-emerald-500':saveStatus==='saving'?'text-gray-400':'text-transparent'}`}>
+                {saveStatus==='saved' ? (
+                  <><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2 2 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>Saved</>
+                ) : saveStatus==='saving' ? 'Saving…' : '·'}
               </span>
               <button onClick={() => setAiClientOpen(o => !o)}
                 className={`flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl transition cursor-pointer shadow-sm ${
@@ -1323,6 +1409,14 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
           </>
         )}
       </div>
+
+      {/* ── client-online banner (builder only) */}
+      {!clientOnly && clientOnline && (
+        <div className="h-7 bg-emerald-50 border-b border-emerald-100 flex items-center justify-center gap-2 shrink-0">
+          <span className="w-2 h-2 bg-emerald-500 rounded-full" style={{ animation: 'pulse 2s infinite' }} />
+          <span className="text-[11px] font-semibold text-emerald-700">Client is viewing now</span>
+        </div>
+      )}
 
       {/* ── 3-COLUMN BODY */}
       <div className="flex flex-1 overflow-hidden">
@@ -1553,6 +1647,7 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                 msgText={msgText}
                 setMsgText={setMsgText}
                 onSend={sendMessage}
+                onSaveNow={saveNow}
               />
             )}
           </div>
@@ -1575,6 +1670,19 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
 
       {showTemplates && (
         <SmartGeneratorModal onGenerate={loadGeneratedRooms} onClose={() => setShowTemplates(false)} />
+      )}
+
+      {/* ── toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] pointer-events-none">
+          <div className="bg-[#1a3a5c] text-white text-[12px] font-medium px-4 py-2.5 rounded-full shadow-xl flex items-center gap-2">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <circle cx="6" cy="6" r="5" stroke="white" strokeWidth="1.3"/>
+              <path d="M3.5 6l2 2 3-3" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            {toast}
+          </div>
+        </div>
       )}
     </div>
   )
@@ -1786,7 +1894,7 @@ function RoomIcon({ type = '', size = 16 }) {
   return <svg {...p}><path d="M2.5 9.5L9 3.5l6.5 6M4.5 8.5v7h9v-7"/></svg>
 }
 
-function ClientRightPanel({ rooms, selId, setSelId, updRoom, msgText, setMsgText, onSend }) {
+function ClientRightPanel({ rooms, selId, setSelId, updRoom, msgText, setMsgText, onSend, onSaveNow }) {
   const [submitted, setSubmitted] = useState(false)
   const selRoom = rooms.find(r => r.id === selId) ?? null
   const catalog  = selRoom ? getRoomCatalog(selRoom.type) : null
@@ -1795,6 +1903,7 @@ function ClientRightPanel({ rooms, selId, setSelId, updRoom, msgText, setMsgText
     const room = rooms.find(r => r.id === roomId)
     if (!room) return
     updRoom(roomId, { clientMaterials: { ...(room.clientMaterials ?? {}), [cat]: optId } })
+    onSaveNow?.()
   }
 
   const handleSubmit = () => {
@@ -2433,7 +2542,7 @@ function RoomBlock({ room, selected, view, clientStyle, cost, highlighted, build
           style={{ fontSize: isCorridor ? 8 : 9, color: textColor }}>
           {isCorridor ? 'HALL' : room.type.toUpperCase()}
         </span>
-        {/* Builder: show dimensions + cost + material */}
+        {/* Builder: dimensions + cost + client material text */}
         {builderMode && !isCorridor && (
           <>
             <span style={{ fontSize: 7.5, color: '#888', marginTop: 2 }}>
@@ -2442,11 +2551,16 @@ function RoomBlock({ room, selected, view, clientStyle, cost, highlighted, build
             <span style={{ fontSize: 7.5, color: '#1a3a5c', fontWeight: 700, marginTop: 1 }}>
               {fmtAUD(roomCost)}
             </span>
-            {floorMat && (
-              <span style={{ fontSize: 6.5, color: '#aaa', marginTop: 1 }}>
-                {floorMat}
+            {clientMaterials && Object.keys(clientMaterials).length > 0 ? (
+              <span style={{ fontSize: 6, color: '#7c8fa8', marginTop: 1, lineHeight: 1.3, textAlign: 'center' }}>
+                {Object.entries(clientMaterials).slice(0, 2).map(([cat, optId]) => {
+                  const opt = getMatOption(room.type, cat, optId)
+                  return opt ? `${cat}: ${opt.label}` : null
+                }).filter(Boolean).join('\n')}
               </span>
-            )}
+            ) : floorMat ? (
+              <span style={{ fontSize: 6.5, color: '#aaa', marginTop: 1 }}>{floorMat}</span>
+            ) : null}
           </>
         )}
       </div>
