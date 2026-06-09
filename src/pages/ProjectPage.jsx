@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { exportQuotePDF } from '../lib/generatePDF'
@@ -8,23 +8,27 @@ const GRID = 20
 const MPX  = 40
 
 const ROOM_DEFS = [
-  { type: 'Living Room',  color: '#dbeafe', stroke: '#93c5fd', w: 200, h: 160, rate: 1800 },
-  { type: 'Kitchen',      color: '#fef3c7', stroke: '#fcd34d', w: 160, h: 120, rate: 3200, flat: 20000 },
-  { type: 'Bedroom',      color: '#ede9fe', stroke: '#c4b5fd', w: 160, h: 120, rate: 1600 },
-  { type: 'Bathroom',     color: '#cffafe', stroke: '#67e8f9', w:  80, h:  80, rate: 4500, flat: 8000 },
-  { type: 'Garage',       color: '#f1f5f9', stroke: '#cbd5e1', w: 240, h: 200, rate:  800 },
-  { type: 'Alfresco',     color: '#dcfce7', stroke: '#86efac', w: 160, h: 120, rate:  600 },
-  { type: 'Dining Room',  color: '#fce7f3', stroke: '#f9a8d4', w: 160, h: 120, rate: 1800 },
-  { type: 'Theatre Room', color: '#fef9c3', stroke: '#fde047', w: 200, h: 160, rate: 2200 },
-  { type: 'Study',        color: '#f0fdf4', stroke: '#6ee7b7', w: 120, h: 120, rate: 1600 },
+  { type: 'Living Room',    color: '#dbeafe', stroke: '#93c5fd', w: 200, h: 160, rate: 1800 },
+  { type: 'Kitchen',        color: '#fef3c7', stroke: '#fcd34d', w: 160, h: 120, rate: 3200, flat: 20000 },
+  { type: 'Bedroom',        color: '#ede9fe', stroke: '#c4b5fd', w: 160, h: 120, rate: 1600 },
+  { type: 'Master Bedroom', color: '#ede9fe', stroke: '#a78bfa', w: 200, h: 160, rate: 1800 },
+  { type: 'Bathroom',       color: '#cffafe', stroke: '#67e8f9', w:  80, h:  80, rate: 4500, flat: 8000 },
+  { type: 'Ensuite',        color: '#cffafe', stroke: '#22d3ee', w: 100, h:  80, rate: 4200, flat: 6000 },
+  { type: 'Walk-in Robe',   color: '#fdf4ff', stroke: '#e879f9', w: 100, h:  60, rate:  600, flat: 3000 },
+  { type: 'Foyer',          color: '#f8fafc', stroke: '#94a3b8', w: 120, h:  80, rate:  800 },
+  { type: 'Garage',         color: '#f1f5f9', stroke: '#cbd5e1', w: 240, h: 200, rate:  800 },
+  { type: 'Alfresco',       color: '#dcfce7', stroke: '#86efac', w: 160, h: 120, rate:  600 },
+  { type: 'Dining Room',    color: '#fce7f3', stroke: '#f9a8d4', w: 160, h: 120, rate: 1800 },
+  { type: 'Theatre Room',   color: '#fef9c3', stroke: '#fde047', w: 200, h: 160, rate: 2200 },
+  { type: 'Study',          color: '#f0fdf4', stroke: '#6ee7b7', w: 120, h: 120, rate: 1600 },
   { type: 'Pool Deck',      color: '#e0f2fe', stroke: '#38bdf8', w: 240, h: 120, rate:  400 },
   { type: 'Laundry',        color: '#f0f9ff', stroke: '#7dd3fc', w: 100, h:  80, rate: 2800, flat: 3000 },
-  { type: 'Home Gym',        color: '#fdf4ff', stroke: '#d946ef', w: 200, h: 160, rate: 1200 },
-  { type: 'Walk-in Pantry',  color: '#fff7ed', stroke: '#fb923c', w: 100, h:  80, rate: 1400 },
-  { type: 'Mudroom',         color: '#f7fee7', stroke: '#84cc16', w: 120, h:  80, rate: 1100 },
-  { type: 'Home Office',     color: '#ecfdf5', stroke: '#4ade80', w: 140, h: 120, rate: 1600 },
-  { type: 'Workshop',        color: '#fafaf9', stroke: '#a8a29e', w: 200, h: 160, rate:  900 },
-  { type: 'Corridor',        color: '#f1f5f9', stroke: '#94a3b8', w: 200, h:  48, rate:    0 },
+  { type: 'Home Gym',       color: '#fdf4ff', stroke: '#d946ef', w: 200, h: 160, rate: 1200 },
+  { type: 'Walk-in Pantry', color: '#fff7ed', stroke: '#fb923c', w: 100, h:  80, rate: 1400 },
+  { type: 'Mudroom',        color: '#f7fee7', stroke: '#84cc16', w: 120, h:  80, rate: 1100 },
+  { type: 'Home Office',    color: '#ecfdf5', stroke: '#4ade80', w: 140, h: 120, rate: 1600 },
+  { type: 'Workshop',       color: '#fafaf9', stroke: '#a8a29e', w: 200, h: 160, rate:  900 },
+  { type: 'Corridor',       color: '#f1f5f9', stroke: '#94a3b8', w: 200, h:  48, rate:    0 },
 ]
 
 const TRADES = [
@@ -40,13 +44,32 @@ const TRADES = [
 
 const WALL_OPTS  = ['Brick Veneer', 'Double Brick', 'Timber Frame', 'Steel Frame']
 const FLOOR_OPTS = ['Tile', 'Timber', 'Carpet', 'Polished Concrete', 'Vinyl Plank']
+const ROOF_OPTS  = ['Colorbond', 'Concrete Tiles', 'Terracotta', 'Flat Roof']
 const STYLES     = ['Modern', 'Coastal', 'Hamptons', 'Industrial']
 const FINISHES   = {
   Kitchen:  ['Entry Level', 'Mid Range', 'Premium', 'Luxury'],
   Flooring: ["Builder's Grade", 'Standard', 'Premium'],
   Windows:  ['Aluminium', 'Timber', 'uPVC'],
 }
+const STYLE_THEMES = {
+  Modern:     { fill: '#ffffff', wall: '#1a1a1a' },
+  Coastal:    { fill: '#e8f4fd', wall: '#1a3a5c' },
+  Hamptons:   { fill: '#fdf6e3', wall: '#1a3a5c' },
+  Industrial: { fill: '#e8e8e8', wall: '#111111' },
+}
+const WALL_MULT  = { 'Brick Veneer': 1.0, 'Double Brick': 1.22, 'Timber Frame': 0.84, 'Steel Frame': 0.95 }
+const FLOOR_MULT = { 'Tile': 1.0, 'Timber': 1.15, 'Carpet': 0.9, 'Polished Concrete': 1.1, 'Vinyl Plank': 0.94 }
+const ROOF_MULT  = { 'Colorbond': 1.0, 'Concrete Tiles': 1.05, 'Terracotta': 1.12, 'Flat Roof': 0.93 }
+const CLIENT_FLOOR_OPTS   = ['Timber', 'Tiles', 'Carpet', 'Concrete']
+const CLIENT_WALL_OPTS    = ['Painted', 'Rendered', 'Brick']
+const CLIENT_KITCHEN_OPTS = ['Standard', 'Premium', 'Luxury']
+const BUDGET_TIERS = [
+  { id: 'affordable', label: 'Keep it affordable' },
+  { id: 'midrange',   label: 'Mid range'           },
+  { id: 'premium',    label: 'Premium finish'      },
+]
 const STATUS_OPTS = ['Draft', 'Quote Sent', 'In Progress', 'Completed']
+const AI_MODEL    = 'claude-sonnet-4-20250514'
 
 // ─── smart generator constants ────────────────────────────────────────────────
 const EXTRA_ROOMS = ['Study', 'Theatre Room', 'Home Gym', 'Walk-in Pantry', 'Mudroom', 'Pool Deck', 'Alfresco', 'Workshop', 'Home Office']
@@ -63,12 +86,36 @@ const SIZE_LABEL_MAP = [
 ]
 const sizeLabel = sz => SIZE_LABEL_MAP.find(([max]) => sz <= max)[1]
 
-function generateFloorPlan({ propertyType, houseSize, bedrooms, bathrooms, extras, variant = 0 }) {
-  const sf   = Math.sqrt(houseSize / 400)
-  const sc   = v => Math.max(GRID * 3, Math.round(v * sf / GRID) * GRID)
-  const isGF = propertyType === 'Granny Flat'
-  const M    = 40
+// ─── TEMPLATES ────────────────────────────────────────────────────────────────
+const FLOOR_TEMPLATES = [
+  {
+    id: 'aussie_family',
+    name: 'The Aussie Family',
+    desc: '4 bed · 2 bath · Double garage · Alfresco',
+    size: '320m²',
+    params: { houseSize: 320, bedrooms: 4, bathrooms: 2, extras: [], singleGarage: false },
+  },
+  {
+    id: 'first_home',
+    name: 'First Home Starter',
+    desc: '3 bed · 1 bath · Single garage · Alfresco',
+    size: '220m²',
+    params: { houseSize: 220, bedrooms: 3, bathrooms: 1, extras: [], singleGarage: true },
+  },
+  {
+    id: 'executive',
+    name: 'The Executive',
+    desc: '4 bed · 2 bath · Theatre · Study · Large alfresco',
+    size: '450m²',
+    params: { houseSize: 450, bedrooms: 4, bathrooms: 2, extras: ['Theatre Room', 'Study'], singleGarage: false },
+  },
+]
+
+function generateFloorPlan({ houseSize = 320, bedrooms = 4, bathrooms = 2, extras = [], singleGarage = false }) {
   const rooms = []
+  const sf = Math.sqrt(houseSize / 320)
+  const sc = v => Math.max(GRID * 2, Math.round(v * sf / GRID) * GRID)
+  const OX = 80, OY = 100
 
   const mk = (type, x, y, w, h) => {
     const def = ROOM_DEFS.find(d => d.type === type) ?? ROOM_DEFS[0]
@@ -77,114 +124,407 @@ function generateFloorPlan({ propertyType, houseSize, bedrooms, bathrooms, extra
     return r
   }
 
-  const garW = isGF ? 0 : sc(240), garH = isGF ? 0 : sc(200)
-  const livW = sc(isGF ? 240 : 280),  livH = sc(isGF ? 180 : 220)
-  const kitW = sc(160), kitH = sc(140)
-  const dinW = sc(140), dinH = sc(120)
-  const lauW = sc(100), lauH = sc(80)
-  const bedMW = sc(200), bedMH = sc(180)
-  const bedW  = sc(160), bedH  = sc(160)
-  const bathW = sc(100), bathH = sc(100)
+  // ── Base dimensions (sf=1 = 320m² standard family home) ──
+  const garW  = singleGarage ? sc(160) : sc(320)  // single 4m or double 8m garage
+  const garH  = sc(240)                             // 6m garage depth
+  const foyW  = sc(120)                             // 3m foyer width
+  const mBW   = sc(200)                             // 5m master suite column width
+  const mBH   = sc(160)                             // 4m master bed depth
+  const wirW  = snap(mBW / 2)                       // half master width = 2.5m WIR
+  const wirH  = garH - mBH                          // fills remaining front zone height
+  const ensW  = mBW - wirW                          // ensuite fills other half
+  const ensH  = wirH
 
-  const SMALL_EX = ['Study', 'Home Office', 'Walk-in Pantry', 'Mudroom', 'Workshop']
-  const exWidth  = t => t === 'Walk-in Pantry' ? sc(100) : t === 'Mudroom' ? sc(120) : t === 'Workshop' ? sc(180) : sc(140)
+  // Total house width driven by front zone (garage + foyer + master suite)
+  const totalW = garW + foyW + mBW
 
-  function buildUnit(ox, oy) {
-    let y = oy
+  const hallH     = sc(60)                          // 1.5m corridor
+  const minBH     = sc(120)                         // 3m minor bedroom depth
+  const openPlanH = sc(200)                         // 5m open plan depth (living room drives height)
+  const alfH      = extras.includes('Study') ? sc(180) : sc(140)  // executive gets larger alfresco
 
-    if (variant === 1) {
-      // Bedrooms-first layout
-      let bx = ox
-      for (let i = 0; i < bedrooms; i++) {
-        const [bW, bH] = i === 0 ? [bedMW, bedMH] : [bedW, bedH]
-        mk('Bedroom', bx, y, bW, bH)
-        if (i < bathrooms) mk('Bathroom', bx, y + bH, bathW, bathH)
-        bx += Math.max(bW, bathW)
-      }
-      y += bedMH + (bathrooms > 0 ? bathH : 0)
+  // Open plan widths must sum to totalW
+  const lauW = sc(120)                              // 3m laundry
+  const kitW = sc(160)                              // 4m kitchen
+  const dinW = sc(160)                              // 4m dining
+  const livW = totalW - lauW - kitW - dinW          // living fills remainder
 
-      // Corridor between bedroom zone and utility/living below
-      const corrH1 = Math.max(GRID * 3, snap(48 * sf))
-      mk('Corridor', ox, y, bedrooms * Math.max(bedMW, bathW), corrH1)
-      y += corrH1
+  // ─── Band 1: Front zone — Garage | Foyer | Master suite ───────────────────
+  let y = OY
 
-      let rx = ox
-      mk('Laundry', rx, y, lauW, lauH); rx += lauW
-      SMALL_EX.filter(e => extras.includes(e)).forEach(t => { mk(t, rx, y, exWidth(t), lauH); rx += exWidth(t) })
-      y += lauH
+  mk('Garage', OX, y, garW, garH)
+  mk('Foyer', OX + garW, y, foyW, garH)             // foyer spans full front zone height
 
-      mk('Kitchen', ox, y, kitW, kitH)
-      mk('Dining Room', ox + kitW, y, dinW, dinH)
-      if (extras.includes('Theatre Room')) mk('Theatre Room', ox + kitW + dinW, y, sc(200), sc(160))
-      y += Math.max(kitH, dinH)
+  // Master bed (top of master column)
+  mk('Master Bedroom', OX + garW + foyW, y, mBW, mBH)
+  // WIR + Ensuite side by side below master
+  mk('Walk-in Robe', OX + garW + foyW,        y + mBH, wirW, wirH)
+  mk('Ensuite',      OX + garW + foyW + wirW, y + mBH, ensW, ensH)
 
-      if (!isGF) mk('Garage', ox, y, garW, garH)
-      const lx = isGF ? ox : ox + garW
-      mk('Living Room', lx, y, livW, livH)
-      if (extras.includes('Alfresco')) mk('Alfresco', lx + livW, y, sc(180), sc(140))
-      y += Math.max(isGF ? livH : garH, livH)
-    } else {
-      // Standard layout: street front → living → kitchen → beds
-      if (!isGF) mk('Garage', ox, y, garW, garH)
-      const lx = isGF ? ox : ox + garW
-      mk('Living Room', lx, y, livW, livH)
-      if (extras.includes('Alfresco')) mk('Alfresco', lx + livW, y, sc(180), sc(140))
-      y += Math.max(isGF ? livH : garH, livH)
+  y += garH
 
-      mk('Kitchen', ox, y, kitW, kitH)
-      mk('Dining Room', ox + kitW, y, dinW, dinH)
-      if (extras.includes('Theatre Room')) mk('Theatre Room', ox + kitW + dinW, y, sc(200), sc(160))
-      y += Math.max(kitH, dinH)
+  // ─── Band 2: Main hall ────────────────────────────────────────────────────
+  mk('Corridor', OX, y, totalW, hallH)
+  y += hallH
 
-      let rx = ox
-      mk('Laundry', rx, y, lauW, lauH); rx += lauW
-      SMALL_EX.filter(e => extras.includes(e)).forEach(t => { mk(t, rx, y, exWidth(t), lauH); rx += exWidth(t) })
-      y += lauH
+  // ─── Band 3: Minor bedrooms + family bathroom ─────────────────────────────
+  const numMinorBeds  = Math.max(0, bedrooms - 1)
+  const numFamilyBath = Math.max(1, bathrooms - 1)  // always at least 1 family bath
+  const numBedItems   = numMinorBeds + numFamilyBath
+  if (numBedItems > 0) {
+    const rw = snap(totalW / numBedItems)
+    let bx = OX
+    ;[...Array(numMinorBeds).fill('Bedroom'), ...Array(numFamilyBath).fill('Bathroom')].forEach((type, i) => {
+      const w = i === numBedItems - 1 ? (OX + totalW - bx) : rw
+      mk(type, bx, y, w, minBH)
+      bx += rw
+    })
+    y += minBH
+  }
 
-      // Corridor between utility and bedroom zones
-      const corrH = Math.max(GRID * 3, snap(48 * sf))
-      const corrW = bedrooms * Math.max(bedMW, bathW)
-      mk('Corridor', ox, y, corrW, corrH)
-      y += corrH
+  // ─── Band 3b: Optional extras (Theatre Room, etc.) ────────────────────────
+  const extraRoomList = ['Theatre Room', 'Home Gym', 'Home Office', 'Workshop']
+  const activeExtras = extras.filter(t => extraRoomList.includes(t))
+  if (activeExtras.length > 0) {
+    const exW = snap(totalW / activeExtras.length)
+    let ex = OX
+    activeExtras.forEach((t, i) => {
+      const w = i === activeExtras.length - 1 ? (OX + totalW - ex) : exW
+      mk(t, ex, y, w, sc(120))
+      ex += exW
+    })
+    y += sc(120)
+  }
 
-      let bx = ox
-      for (let i = 0; i < bedrooms; i++) {
-        const [bW, bH] = i === 0 ? [bedMW, bedMH] : [bedW, bedH]
-        mk('Bedroom', bx, y, bW, bH)
-        if (i < bathrooms) mk('Bathroom', bx, y + bH, bathW, bathH)
-        bx += Math.max(bW, bathW)
-      }
-      y += bedMH + (bathrooms > 0 ? bathH : 0)
+  // ─── Band 4: Second hall leading to open plan ─────────────────────────────
+  mk('Corridor', OX, y, totalW, hallH)
+  y += hallH
+
+  // ─── Band 5: Open plan zone — Laundry | Kitchen | Dining | Living ─────────
+  mk('Laundry',     OX,                        y, lauW, openPlanH)
+  mk('Kitchen',     OX + lauW,                 y, kitW, openPlanH)
+  mk('Dining Room', OX + lauW + kitW,          y, dinW, openPlanH)
+  mk('Living Room', OX + lauW + kitW + dinW,   y, livW, openPlanH)
+  y += openPlanH
+
+  // ─── Band 6: Alfresco (outdoor entertaining) ──────────────────────────────
+  mk('Alfresco', OX, y, totalW, alfH)
+
+  // ─── Study in foyer column (Executive template) ───────────────────────────
+  // (Foyer already occupies that column full-height; Study is added as separate room on extras row)
+
+  // ─── Default open walls ───────────────────────────────────────────────────
+  // Kitchen/Dining/Living open plan; Alfresco sliding doors to Living+Dining
+  const DEFAULT_OPEN = {
+    'Living Room': new Set(['Kitchen', 'Dining Room', 'Alfresco']),
+    'Kitchen':     new Set(['Living Room', 'Dining Room']),
+    'Dining Room': new Set(['Kitchen', 'Living Room', 'Alfresco']),
+    'Alfresco':    new Set(['Living Room', 'Dining Room']),
+  }
+  const roomsAdj = (a, b) => {
+    const DT = 8
+    return (
+      (Math.abs((a.x + a.w) - b.x) <= DT && Math.max(a.y, b.y) < Math.min(a.y + a.h, b.y + b.h) - DT) ||
+      (Math.abs((b.x + b.w) - a.x) <= DT && Math.max(a.y, b.y) < Math.min(a.y + a.h, b.y + b.h) - DT) ||
+      (Math.abs((a.y + a.h) - b.y) <= DT && Math.max(a.x, b.x) < Math.min(a.x + a.w, b.x + b.w) - DT) ||
+      (Math.abs((b.y + b.h) - a.y) <= DT && Math.max(a.x, b.x) < Math.min(a.x + a.w, b.x + b.w) - DT)
+    )
+  }
+  const openWallKeys = []
+  for (let i = 0; i < rooms.length; i++) {
+    for (let j = i + 1; j < rooms.length; j++) {
+      const a = rooms[i], b = rooms[j]
+      const aSet = DEFAULT_OPEN[a.type]
+      if (aSet?.has(b.type) && roomsAdj(a, b)) openWallKeys.push(wallKey(a.id, b.id))
     }
-
-    // Bottom extras
-    let ex = ox
-    if (extras.includes('Pool Deck')) { mk('Pool Deck', ex, y, sc(300), sc(120)); ex += sc(300) }
-    if (extras.includes('Home Gym'))  { mk('Home Gym',  ex, y, sc(200), sc(160)) }
-
-    return y
   }
 
-  if (propertyType === 'Duplex') {
-    const u1bottom = buildUnit(M, M)
-    buildUnit(M, u1bottom + GRID * 2)
-  } else {
-    buildUnit(M, M)
-  }
-
-  return rooms
+  return { rooms, openWallKeys }
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
-const snap   = v => Math.round(v / GRID) * GRID
-const pxToM  = px => (px / MPX).toFixed(1)
+const snap    = v => Math.round(v / GRID) * GRID
+const wallKey = (a, b) => a < b ? `${a}-${b}` : `${b}-${a}`
+const pxToM   = px => (px / MPX).toFixed(1)
 const fmtAUD = n => '$' + Math.round(n).toLocaleString('en-AU')
 const cost   = r => {
   const d = ROOM_DEFS.find(x => x.type === r.type)
   return d ? (r.w / MPX) * (r.h / MPX) * d.rate + (d.flat || 0) : 0
 }
 
+const parseAIResponse = text => {
+  const clean = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+  try { const p = JSON.parse(clean); if (p.message) return p } catch {}
+  const s = clean.indexOf('{'), e = clean.lastIndexOf('}')
+  if (s !== -1 && e > s) { try { const p = JSON.parse(clean.slice(s, e + 1)); if (p.message) return p } catch {} }
+  return { message: text, action: null }
+}
+
+const getAISuggestions = rooms => {
+  const types = new Set(rooms.map(r => r.type))
+  const s = []
+  if (types.has('Master Bedroom')) s.push('Make the master bedroom bigger')
+  if (types.has('Kitchen') && types.has('Living Room')) s.push('Open up kitchen to living')
+  if (!types.has('Study')) s.push('Add a home study')
+  if (!types.has('Theatre Room')) s.push('Add a home theatre')
+  if (types.has('Alfresco')) s.push('Extend the alfresco')
+  if (!types.has('Walk-in Pantry')) s.push('Add a walk-in pantry')
+  return s.slice(0, 3)
+}
+
+const getBuilderAISuggestions = () => [
+  'How can I cut 10% off the budget?',
+  "What's the cost impact of double brick?",
+  'Which room costs the most per sqm?',
+]
+
 let uid = 1
+
+// ─── AI chat panels ───────────────────────────────────────────────────────────
+function ClientAIPanel({ messages, loading, input, setInput, onSend, onClose, suggestions, onSuggestion, width, onResizeStart }) {
+  const bottomRef = useRef(null)
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, loading])
+
+  const SparkleIcon = ({ size = 10 }) => (
+    <svg width={size} height={size} viewBox="0 0 12 12" fill="none">
+      <path d="M6 1v2.5M6 8.5V11M1 6h2.5M8.5 6H11M2.9 2.9l1.8 1.8M7.3 7.3l1.8 1.8M9.1 2.9L7.3 4.7M4.7 7.3L2.9 9.1"
+        stroke="white" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  )
+
+  return (
+    <div className="h-full flex flex-col bg-white border-l border-gray-100 relative overflow-hidden" style={{ width }}>
+      {/* Resize drag handle */}
+      <div className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10 hover:bg-[#1a3a5c]/10 transition"
+        onMouseDown={onResizeStart} />
+
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 bg-gradient-to-br from-[#1a3a5c] to-[#2d6a9f] rounded-xl flex items-center justify-center shadow-sm shrink-0">
+            <SparkleIcon size={11} />
+          </div>
+          <div>
+            <p className="text-[#1a3a5c] font-bold text-sm leading-none">Design Assistant</p>
+            <p className="text-gray-300 text-[10px] mt-0.5">Powered by Claude AI</p>
+          </div>
+        </div>
+        <button onClick={onClose} className="text-gray-300 hover:text-gray-500 transition cursor-pointer p-1 rounded-lg hover:bg-gray-50">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M2 2l8 8M10 2L2 10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-3 min-h-0">
+        {messages.length === 0 && !loading && (
+          <div className="text-center py-10 px-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-[#1a3a5c]/8 to-[#2d6a9f]/8 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke="#1a3a5c" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <p className="text-[#1a3a5c] font-bold text-sm">Hi! I'm your design assistant.</p>
+            <p className="text-gray-400 text-xs mt-2 leading-relaxed">I can resize rooms, open walls, add or remove spaces — just ask me anything about your home design.</p>
+          </div>
+        )}
+        {messages.map(m => (
+          <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} items-end gap-1.5`}>
+            {m.role === 'ai' && (
+              <div className="w-5 h-5 bg-gradient-to-br from-[#1a3a5c] to-[#2d6a9f] rounded-full flex items-center justify-center shrink-0 mb-0.5">
+                <SparkleIcon size={8} />
+              </div>
+            )}
+            <div className={`max-w-[84%] rounded-2xl px-3 py-2 text-[11px] leading-relaxed ${
+              m.role === 'user'
+                ? 'bg-[#1a3a5c] text-white rounded-br-sm'
+                : 'bg-gray-100 text-gray-700 rounded-bl-sm'
+            }`}>
+              {m.text}
+            </div>
+          </div>
+        ))}
+        {loading && (
+          <div className="flex items-end gap-1.5">
+            <div className="w-5 h-5 bg-gradient-to-br from-[#1a3a5c] to-[#2d6a9f] rounded-full flex items-center justify-center shrink-0 mb-0.5">
+              <SparkleIcon size={8} />
+            </div>
+            <div className="bg-gray-100 rounded-2xl rounded-bl-sm px-4 py-3">
+              <div className="flex gap-1 items-center h-3">
+                {[0, 1, 2].map(i => (
+                  <div key={i} className="w-1.5 h-1.5 bg-gray-400 rounded-full"
+                    style={{ animation: 'bounce 1.2s ease-in-out infinite', animationDelay: `${i * 0.2}s` }} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Quick suggestion chips */}
+      {suggestions.length > 0 && !loading && messages.length < 6 && (
+        <div className="px-3 pb-2 flex flex-wrap gap-1.5 shrink-0">
+          {suggestions.map((s, i) => (
+            <button key={i} onClick={() => onSuggestion(s)}
+              className="text-[10px] text-[#1a3a5c] bg-[#1a3a5c]/5 hover:bg-[#1a3a5c]/10 border border-[#1a3a5c]/15 hover:border-[#1a3a5c]/30 rounded-full px-2.5 py-1 transition cursor-pointer leading-none">
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Input */}
+      <div className="px-3 pb-3 shrink-0">
+        <div className="flex items-end gap-2 bg-gray-50 rounded-2xl px-3 py-2 border border-gray-100 focus-within:border-[#1a3a5c]/30 focus-within:bg-white transition">
+          <textarea
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend(input) } }}
+            placeholder="Ask me to change anything…"
+            rows={1}
+            className="flex-1 text-[11px] bg-transparent outline-none resize-none text-gray-700 placeholder:text-gray-300 max-h-20 leading-relaxed"
+          />
+          <button onClick={() => onSend(input)} disabled={!input.trim() || loading}
+            className="w-7 h-7 bg-[#1a3a5c] hover:bg-[#243f63] disabled:opacity-30 disabled:cursor-not-allowed text-white rounded-xl flex items-center justify-center transition cursor-pointer shrink-0">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <path d="M1.5 8.5L8.5 5L1.5 1.5V4.5L6 5L1.5 5.5V8.5Z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function BuilderAIFloat({ messages, loading, input, setInput, onSend, onClose, suggestions, onSuggestion }) {
+  const bottomRef = useRef(null)
+  const [pos, setPos] = useState({ x: typeof window !== 'undefined' ? window.innerWidth - 440 : 400, y: 80 })
+  const dragState = useRef(null)
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, loading])
+
+  const onDragStart = e => {
+    e.preventDefault()
+    dragState.current = { startX: e.clientX - pos.x, startY: e.clientY - pos.y }
+    const onMove = me => {
+      if (!dragState.current) return
+      setPos({ x: me.clientX - dragState.current.startX, y: me.clientY - dragState.current.startY })
+    }
+    const onUp = () => {
+      dragState.current = null
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
+
+  const SparkIcon = () => (
+    <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+      <path d="M6 1v2.5M6 8.5V11M1 6h2.5M8.5 6H11M2.9 2.9l1.8 1.8M7.3 7.3l1.8 1.8M9.1 2.9L7.3 4.7M4.7 7.3L2.9 9.1"
+        stroke="white" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  )
+
+  return (
+    <div style={{ position: 'fixed', left: pos.x, top: pos.y, width: 400, zIndex: 200 }}
+      className="bg-white rounded-2xl shadow-2xl border border-gray-100 flex flex-col overflow-hidden">
+      {/* Draggable header */}
+      <div className="px-4 py-3 bg-gradient-to-r from-[#1a3a5c] to-[#1e4d7b] flex items-center justify-between cursor-move select-none"
+        onMouseDown={onDragStart}>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 bg-white/20 rounded-lg flex items-center justify-center">
+            <SparkIcon />
+          </div>
+          <div>
+            <p className="text-white font-semibold text-xs">AI Cost Advisor</p>
+            <p className="text-white/50 text-[9px]">Powered by Claude</p>
+          </div>
+        </div>
+        <button onClick={onClose} className="text-white/60 hover:text-white transition cursor-pointer"
+          onMouseDown={e => e.stopPropagation()}>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M2 2l8 8M10 2L2 10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      {/* Messages */}
+      <div className="overflow-y-auto px-3 py-3 space-y-2.5" style={{ minHeight: 200, maxHeight: 380 }}>
+        {messages.length === 0 && !loading && (
+          <div className="text-center py-6 px-3">
+            <p className="text-[#1a3a5c] font-semibold text-xs">Your AI cost advisor.</p>
+            <p className="text-gray-400 text-[11px] mt-1 leading-relaxed">Ask about costs, materials, value engineering, or design trade-offs.</p>
+          </div>
+        )}
+        {messages.map(m => (
+          <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} gap-1.5 items-end`}>
+            {m.role === 'ai' && (
+              <div className="w-5 h-5 bg-[#1a3a5c] rounded-full flex items-center justify-center shrink-0 mb-0.5">
+                <SparkIcon />
+              </div>
+            )}
+            <div className={`max-w-[84%] rounded-xl px-3 py-2 text-[11px] leading-relaxed ${
+              m.role === 'user' ? 'bg-[#1a3a5c] text-white rounded-br-sm' : 'bg-gray-100 text-gray-700 rounded-bl-sm'
+            }`}>
+              {m.text}
+            </div>
+          </div>
+        ))}
+        {loading && (
+          <div className="flex gap-1.5 items-end">
+            <div className="w-5 h-5 bg-[#1a3a5c] rounded-full flex items-center justify-center shrink-0 mb-0.5">
+              <SparkIcon />
+            </div>
+            <div className="bg-gray-100 rounded-xl rounded-bl-sm px-3 py-2.5">
+              <div className="flex gap-1">
+                {[0, 1, 2].map(i => (
+                  <div key={i} className="w-1.5 h-1.5 bg-gray-400 rounded-full"
+                    style={{ animation: 'bounce 1.2s ease-in-out infinite', animationDelay: `${i * 0.2}s` }} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Suggestion chips */}
+      {suggestions.length > 0 && !loading && messages.length < 4 && (
+        <div className="px-3 py-2 flex flex-wrap gap-1 border-t border-gray-50">
+          {suggestions.map((s, i) => (
+            <button key={i} onClick={() => onSuggestion(s)}
+              className="text-[10px] text-[#1a3a5c] bg-[#1a3a5c]/5 hover:bg-[#1a3a5c]/10 border border-[#1a3a5c]/15 rounded-full px-2 py-0.5 transition cursor-pointer">
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Input */}
+      <div className="px-3 pb-3 pt-2 border-t border-gray-50 shrink-0">
+        <div className="flex items-end gap-2 bg-gray-50 rounded-xl px-3 py-2 border border-gray-100 focus-within:border-[#1a3a5c]/30 transition">
+          <textarea
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend(input) } }}
+            placeholder="Ask about costs or design…"
+            rows={1}
+            className="flex-1 text-[11px] bg-transparent outline-none resize-none text-gray-700 placeholder:text-gray-300 max-h-16"
+          />
+          <button onClick={() => onSend(input)} disabled={!input.trim() || loading}
+            className="w-6 h-6 bg-[#1a3a5c] hover:bg-[#243f63] disabled:opacity-30 text-white rounded-lg flex items-center justify-center transition cursor-pointer shrink-0">
+            <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
+              <path d="M1.5 8.5L8.5 5L1.5 1.5V4.5L6 5L1.5 5.5V8.5Z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ─── page ─────────────────────────────────────────────────────────────────────
 export default function ProjectPage() {
@@ -194,16 +534,22 @@ export default function ProjectPage() {
   const [searchParams]     = useSearchParams()
   const isNew              = id === 'new'
 
-  const [project,  setProject]  = useState(null)
-  const [loading,  setLoading]  = useState(true)
-  const [view,     setView]     = useState(() => searchParams.get('view') === 'client' ? 'client' : 'builder')
-  const [rooms,    setRooms]    = useState([])
-  const [selId,    setSelId]    = useState(null)
+  const [project,    setProject]    = useState(null)
+  const [loading,    setLoading]    = useState(true)
+  const [view,       setView]       = useState(() => searchParams.get('view') === 'client' ? 'client' : 'builder')
+  const [rooms,      setRooms]      = useState([])
+  const [openWalls,  setOpenWalls]  = useState(() => new Set())
+  const [selId,      setSelId]      = useState(null)
   const [tool,     setTool]     = useState('select')
   const [zoom,     setZoom]     = useState(1)
   const [history,  setHistory]  = useState([])
-  const [wallType,  setWallType]  = useState('Brick Veneer')
-  const [floorType, setFloorType] = useState('Tile')
+  const [wallType,      setWallType]      = useState('Brick Veneer')
+  const [floorType,     setFloorType]     = useState('Tile')
+  const [roofType,      setRoofType]      = useState('Colorbond')
+  const [margin,        setMargin]        = useState(15)
+  const [gstOn,         setGstOn]         = useState(true)
+  const [builderNotes,  setBuilderNotes]  = useState('')
+  const [budgetTier,    setBudgetTier]    = useState('midrange')
   const [rpTab,    setRpTab]    = useState('costs') // 'costs' | 'details'
   const [saveStatus, setSaveStatus] = useState('idle') // 'idle'|'unsaved'|'saving'|'saved'
   const [showTemplates, setShowTemplates] = useState(false)
@@ -220,6 +566,16 @@ export default function ProjectPage() {
     { from: 'client',  text: 'Can we make the master bedroom a bit larger?',   time: '2h ago' },
     { from: 'builder', text: "No problem — updated it to 4.5m × 4m for you.", time: '1h ago' },
   ])
+  // AI state
+  const [aiClientOpen,  setAiClientOpen]  = useState(false)
+  const [aiBuilderOpen, setAiBuilderOpen] = useState(false)
+  const [aiClientMsgs,  setAiClientMsgs]  = useState([])
+  const [aiBuilderMsgs, setAiBuilderMsgs] = useState([])
+  const [aiClientInput, setAiClientInput] = useState('')
+  const [aiBuilderInput,setAiBuilderInput]= useState('')
+  const [aiLoading,     setAiLoading]     = useState(false)
+  const [aiPanelWidth,  setAiPanelWidth]  = useState(380)
+  const [highlightId,   setHighlightId]   = useState(null)
 
   const canvasRef     = useRef(null)
   const dragRef       = useRef(null)
@@ -229,25 +585,49 @@ export default function ProjectPage() {
   const createdRef    = useRef(null)   // tracks ID after first-save of a new project
   const detailFormRef = useRef(detailForm)
   // stable refs for auto-save
-  const roomsRef      = useRef(rooms)
-  const wallTypeRef  = useRef(wallType)
-  const floorTypeRef = useRef(floorType)
-  const styleRef     = useRef(style)
-  const budgetRef    = useRef(budget)
-  const finishesRef  = useRef(finishes)
+  const roomsRef        = useRef(rooms)
+  const openWallsRef    = useRef(openWalls)
+  const wallTypeRef     = useRef(wallType)
+  const floorTypeRef    = useRef(floorType)
+  const roofTypeRef     = useRef(roofType)
+  const marginRef       = useRef(margin)
+  const gstOnRef        = useRef(gstOn)
+  const builderNotesRef = useRef(builderNotes)
+  const styleRef        = useRef(style)
+  const budgetRef       = useRef(budget)
+  const finishesRef     = useRef(finishes)
+  const budgetTierRef   = useRef(budgetTier)
+  const aiClientMsgsRef  = useRef([])
+  const aiBuilderMsgsRef = useRef([])
 
-  useEffect(() => { detailFormRef.current = detailForm }, [detailForm])
-  useEffect(() => { zoomRef.current      = zoom },      [zoom])
-  useEffect(() => { roomsRef.current     = rooms },     [rooms])
-  useEffect(() => { wallTypeRef.current  = wallType },  [wallType])
-  useEffect(() => { floorTypeRef.current = floorType }, [floorType])
-  useEffect(() => { styleRef.current     = style },     [style])
-  useEffect(() => { budgetRef.current    = budget },    [budget])
-  useEffect(() => { finishesRef.current  = finishes },  [finishes])
+  useEffect(() => { detailFormRef.current     = detailForm },    [detailForm])
+  useEffect(() => { zoomRef.current           = zoom },          [zoom])
+  useEffect(() => { roomsRef.current          = rooms },         [rooms])
+  useEffect(() => { openWallsRef.current      = openWalls },     [openWalls])
+  useEffect(() => { wallTypeRef.current       = wallType },      [wallType])
+  useEffect(() => { floorTypeRef.current      = floorType },     [floorType])
+  useEffect(() => { roofTypeRef.current       = roofType },      [roofType])
+  useEffect(() => { marginRef.current         = margin },        [margin])
+  useEffect(() => { gstOnRef.current          = gstOn },         [gstOn])
+  useEffect(() => { builderNotesRef.current   = builderNotes },  [builderNotes])
+  useEffect(() => { styleRef.current          = style },         [style])
+  useEffect(() => { budgetRef.current         = budget },        [budget])
+  useEffect(() => { finishesRef.current       = finishes },      [finishes])
+  useEffect(() => { budgetTierRef.current     = budgetTier },    [budgetTier])
+  useEffect(() => { aiClientMsgsRef.current   = aiClientMsgs },  [aiClientMsgs])
+  useEffect(() => { aiBuilderMsgsRef.current  = aiBuilderMsgs }, [aiBuilderMsgs])
 
-  const total    = rooms.reduce((s, r) => s + cost(r), 0)
-  const totalSqm = rooms.reduce((s, r) => s + (r.w / MPX) * (r.h / MPX), 0)
-  const selRoom  = rooms.find(r => r.id === selId) ?? null
+  useEffect(() => {
+    if (!highlightId) return
+    const t = setTimeout(() => setHighlightId(null), 2500)
+    return () => clearTimeout(t)
+  }, [highlightId])
+
+  const baseCost   = rooms.reduce((s, r) => s + cost(r) * (WALL_MULT[wallType] || 1) * (FLOOR_MULT[floorType] || 1) * (ROOF_MULT[roofType] || 1), 0)
+  const withMargin = baseCost * (1 + margin / 100)
+  const total      = gstOn ? withMargin * 1.1 : withMargin
+  const totalSqm   = rooms.reduce((s, r) => s + (r.w / MPX) * (r.h / MPX), 0)
+  const selRoom    = rooms.find(r => r.id === selId) ?? null
 
   // ── load project from Supabase (or bootstrap from navigation state for new projects)
   useEffect(() => {
@@ -280,8 +660,14 @@ export default function ProjectPage() {
           notes:       data.notes       || '',
         })
         if (data.floor_plan?.length) {
-          setRooms(data.floor_plan)
-          uid = Math.max(...data.floor_plan.map(r => r.id || 0), 0) + 1
+          const meta   = data.floor_plan.find(r => r.type === '_ow_')
+          const aiMeta = data.floor_plan.find(r => r.type === '_ai_')
+          const rms    = data.floor_plan.filter(r => r.type !== '_ow_' && r.type !== '_ai_')
+          setRooms(rms)
+          setOpenWalls(new Set(meta?.keys ?? []))
+          if (aiMeta?.client)  setAiClientMsgs(aiMeta.client)
+          if (aiMeta?.builder) setAiBuilderMsgs(aiMeta.builder)
+          uid = Math.max(...rms.map(r => r.id || 0), 0) + 1
         }
         if (data.wall_type)       setWallType(data.wall_type)
         if (data.floor_type)      setFloorType(data.floor_type)
@@ -309,7 +695,7 @@ export default function ProjectPage() {
           address:         form.address     || '',
           status:          form.status      || 'Draft',
           notes:           form.notes       || '',
-          floor_plan:      roomsRef.current,
+          floor_plan:      [...roomsRef.current, { type: '_ow_', keys: [...openWallsRef.current] }, { type: '_ai_', client: aiClientMsgsRef.current, builder: aiBuilderMsgsRef.current }],
           wall_type:       wallTypeRef.current,
           floor_type:      floorTypeRef.current,
           client_style:    styleRef.current,
@@ -333,7 +719,7 @@ export default function ProjectPage() {
     const { error } = await supabase
       .from('projects')
       .update({
-        floor_plan:      roomsRef.current,
+        floor_plan:      [...roomsRef.current, { type: '_ow_', keys: [...openWallsRef.current] }],
         wall_type:       wallTypeRef.current,
         floor_type:      floorTypeRef.current,
         client_style:    styleRef.current,
@@ -351,7 +737,7 @@ export default function ProjectPage() {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(saveProject, 2500)
     return () => clearTimeout(saveTimerRef.current)
-  }, [rooms, wallType, floorType, style, budget, finishes, saveProject])
+  }, [rooms, openWalls, wallType, floorType, roofType, margin, gstOn, builderNotes, style, budget, finishes, budgetTier, aiClientMsgs, aiBuilderMsgs, saveProject])
 
   // ── save project details (name, address, status, notes)
   async function saveDetails() {
@@ -417,11 +803,164 @@ export default function ProjectPage() {
     })
   }, [])
 
-  const loadGeneratedRooms = (generatedRooms) => {
+  const loadGeneratedRooms = ({ rooms: generatedRooms, openWallKeys }) => {
     setHistory(h => [...h.slice(-19), rooms])
     setRooms(generatedRooms)
+    setOpenWalls(new Set(openWallKeys ?? []))
     setSelId(null)
   }
+
+  const toggleWall = useCallback((key) => {
+    setOpenWalls(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key); else next.add(key)
+      return next
+    })
+  }, [])
+
+  // ── AI actions ─────────────────────────────────────────────────────────────
+  const applyAIAction = useCallback((action) => {
+    if (!action?.type) return
+    switch (action.type) {
+      case 'resize_room': {
+        const target = roomsRef.current.find(r =>
+          r.type.toLowerCase().includes((action.roomType || '').toLowerCase()))
+        if (!target) break
+        setRooms(prev => {
+          const idx = prev.findIndex(r => r.id === target.id)
+          if (idx === -1) return prev
+          const r = {
+            ...prev[idx],
+            w: Math.max(GRID * 4, snap(prev[idx].w + (action.widthDelta || 0))),
+            h: Math.max(GRID * 4, snap(prev[idx].h + (action.heightDelta || 0))),
+          }
+          return [...prev.slice(0, idx), r, ...prev.slice(idx + 1)]
+        })
+        setHighlightId(target.id)
+        break
+      }
+      case 'add_room': {
+        const def = ROOM_DEFS.find(d =>
+          d.type.toLowerCase().includes((action.roomType || '').toLowerCase()))
+        if (!def) break
+        const maxY = roomsRef.current.reduce((m, r) => Math.max(m, r.y + r.h), 0)
+        const newRoom = {
+          id: uid++, type: def.type,
+          x: 80, y: maxY + GRID * 2,
+          w: snap(def.w), h: snap(def.h),
+          color: def.color, stroke: def.stroke,
+        }
+        setRooms(prev => [...prev, newRoom])
+        setHighlightId(newRoom.id)
+        break
+      }
+      case 'remove_room': {
+        setRooms(prev => {
+          const idx = prev.findIndex(r =>
+            r.type.toLowerCase().includes((action.roomType || '').toLowerCase()))
+          return idx === -1 ? prev : [...prev.slice(0, idx), ...prev.slice(idx + 1)]
+        })
+        break
+      }
+      case 'toggle_wall': {
+        const r1 = roomsRef.current.find(r => r.type.toLowerCase().includes((action.room1Type || '').toLowerCase()))
+        const r2 = roomsRef.current.find(r => r.type.toLowerCase().includes((action.room2Type || '').toLowerCase()))
+        if (r1 && r2) toggleWall(wallKey(r1.id, r2.id))
+        break
+      }
+    }
+  }, [toggleWall])
+
+  const callAI = useCallback(async (history, systemPrompt) => {
+    const res = await fetch('/api/ai-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: AI_MODEL, max_tokens: 1024, system: systemPrompt, messages: history }),
+    })
+    if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`)
+    const data = await res.json()
+    return data.content?.[0]?.text ?? ''
+  }, [])
+
+  const sendClientAI = useCallback(async (userMsg) => {
+    if (!userMsg.trim() || aiLoading) return
+    setAiLoading(true)
+    setAiClientMsgs(prev => [...prev, { role: 'user', text: userMsg, id: Date.now() }])
+    setAiClientInput('')
+    try {
+      const roomSummary = roomsRef.current
+        .map(r => `${r.type}: ${pxToM(r.w)}m × ${pxToM(r.h)}m`).join('; ')
+      const system = `You are a friendly home design assistant helping a client customise their new home. Be warm and encouraging. Never mention costs or prices.
+
+Current rooms: ${roomSummary}
+
+When asked to change something respond with ONLY a valid JSON object:
+{"message":"your friendly response","action":{"type":"resize_room","roomType":"Kitchen","widthDelta":40,"heightDelta":0}}
+
+Action types: "resize_room" (widthDelta/heightDelta in px, 40px=1m), "add_room" (roomType), "remove_room" (roomType), "toggle_wall" (room1Type+room2Type).
+If no change needed set "action":null. Always respond with valid JSON only.`
+      const history = [
+        ...aiClientMsgsRef.current.map(m => ({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.text })),
+        { role: 'user', content: userMsg },
+      ]
+      const raw    = await callAI(history, system)
+      const parsed = parseAIResponse(raw)
+      setAiClientMsgs(prev => [...prev, { role: 'ai', text: parsed.message, id: Date.now() + 1 }])
+      if (parsed.action) applyAIAction(parsed.action)
+    } catch (e) {
+      console.error(e)
+      setAiClientMsgs(prev => [...prev, {
+        role: 'ai', text: "Sorry, I couldn't connect. Make sure ANTHROPIC_API_KEY is set in .env.local and restart the dev server.", id: Date.now() + 1,
+      }])
+    } finally {
+      setAiLoading(false)
+    }
+  }, [aiLoading, callAI, applyAIAction])
+
+  const sendBuilderAI = useCallback(async (userMsg) => {
+    if (!userMsg.trim() || aiLoading) return
+    setAiLoading(true)
+    setAiBuilderMsgs(prev => [...prev, { role: 'user', text: userMsg, id: Date.now() }])
+    setAiBuilderInput('')
+    try {
+      const roomList = roomsRef.current
+        .map(r => `${r.type}: ${pxToM(r.w)}m×${pxToM(r.h)}m = ${fmtAUD(cost(r))}`).join('; ')
+      const system = `You are a professional building cost and design consultant for an Australian builder. Be precise and concise. Use Australian dollars.
+
+Rooms: ${roomList}
+Wall: ${wallTypeRef.current} (×${WALL_MULT[wallTypeRef.current]??1}), Floor: ${floorTypeRef.current} (×${FLOOR_MULT[floorTypeRef.current]??1}), Roof: ${roofTypeRef.current} (×${ROOF_MULT[roofTypeRef.current]??1})
+Margin: ${marginRef.current}%, GST: ${gstOnRef.current ? 'included' : 'excluded'}
+
+Respond with valid JSON: {"message":"your detailed response under 120 words"}`
+      const history = [
+        ...aiBuilderMsgsRef.current.map(m => ({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.text })),
+        { role: 'user', content: userMsg },
+      ]
+      const raw    = await callAI(history, system)
+      const parsed = parseAIResponse(raw)
+      setAiBuilderMsgs(prev => [...prev, { role: 'ai', text: parsed.message, id: Date.now() + 1 }])
+    } catch (e) {
+      console.error(e)
+      setAiBuilderMsgs(prev => [...prev, {
+        role: 'ai', text: 'API connection failed. Add ANTHROPIC_API_KEY to .env.local and restart the dev server.', id: Date.now() + 1,
+      }])
+    } finally {
+      setAiLoading(false)
+    }
+  }, [aiLoading, callAI])
+
+  const handleAIPanelResize = useCallback(e => {
+    e.preventDefault()
+    const startX = e.clientX
+    const startW = aiPanelWidth
+    const onMove = me => setAiPanelWidth(Math.max(300, Math.min(640, startW + (startX - me.clientX))))
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }, [aiPanelWidth])
 
   const sendToClient = () => {
     const url = `${window.location.origin}${window.location.pathname}?view=client`
@@ -591,6 +1130,34 @@ export default function ProjectPage() {
             )}
           </div>
 
+          {/* AI buttons */}
+          {view === 'client' && (
+            <button onClick={() => setAiClientOpen(o => !o)}
+              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                aiClientOpen
+                  ? 'bg-[#1a3a5c] text-white shadow-sm'
+                  : 'bg-gradient-to-r from-[#1a3a5c] to-[#2d6a9f] text-white hover:from-[#243f63] hover:to-[#3a7ab5] shadow-sm'
+              }`}>
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                <path d="M6 1v2M6 9v2M1 6h2M9 6h2M2.6 2.6l1.4 1.4M8 8l1.4 1.4M9.4 2.6L8 4M4 8l-1.4 1.4" stroke="white" strokeWidth="1.3" strokeLinecap="round"/>
+              </svg>
+              Ask AI
+            </button>
+          )}
+          {view === 'builder' && (
+            <button onClick={() => setAiBuilderOpen(o => !o)}
+              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition cursor-pointer ${
+                aiBuilderOpen
+                  ? 'bg-[#1a3a5c] text-white border-[#1a3a5c]'
+                  : 'text-[#1a3a5c] border-[#1a3a5c]/25 hover:border-[#1a3a5c]/50 hover:bg-[#1a3a5c]/5'
+              }`}>
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                <path d="M6 1v2M6 9v2M1 6h2M9 6h2M2.6 2.6l1.4 1.4M8 8l1.4 1.4M9.4 2.6L8 4M4 8l-1.4 1.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+              </svg>
+              AI Advisor
+            </button>
+          )}
+
           {/* View toggle */}
           <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
             {['builder', 'client'].map(v => (
@@ -698,8 +1265,12 @@ export default function ProjectPage() {
 
           <div className="flex-1 overflow-auto">
             <div style={{ position: 'relative', width: CW * zoom, height: CH * zoom }}>
+              <SiteLayer rooms={rooms} zoom={zoom} CW={CW} CH={CH} />
               <FurnitureLayer rooms={rooms} zoom={zoom} CW={CW} CH={CH} />
-              <WallOverlay rooms={rooms} zoom={zoom} CW={CW} CH={CH} />
+              <WallOverlay rooms={rooms} openWalls={openWalls}
+                wallColor={view === 'client' ? (STYLE_THEMES[style]?.wall ?? '#1c1c1c') : '#1c1c1c'}
+                zoom={zoom} CW={CW} CH={CH} />
+              <WallControlLayer rooms={rooms} openWalls={openWalls} onToggleWall={toggleWall} zoom={zoom} CW={CW} CH={CH} />
               <DimensionLines rooms={rooms} zoom={zoom} CW={CW} CH={CH} />
               <div
                 ref={canvasRef}
@@ -731,7 +1302,8 @@ export default function ProjectPage() {
                   </div>
                 )}
                 {rooms.map(r => (
-                  <RoomBlock key={r.id} room={r} selected={r.id === selId} view={view} cost={cost(r)}
+                  <RoomBlock key={r.id} room={r} selected={r.id === selId} view={view} clientStyle={style} cost={cost(r)}
+                    highlighted={r.id === highlightId}
                     onMouseDown={e => onRoomDown(e, r.id)}
                     onHandleDown={(e, dir) => onHandleDown(e, r.id, dir)}
                   />
@@ -741,43 +1313,82 @@ export default function ProjectPage() {
           </div>
         </div>
 
-        {/* ── RIGHT PANEL */}
-        <div className="w-[240px] shrink-0 bg-white border-l border-gray-100 flex flex-col overflow-y-auto">
-          {view === 'builder' ? (
-            <>
-              {/* Tab bar */}
-              <div className="flex border-b border-gray-100 shrink-0">
-                {[['costs','Costs'],['details','Details']].map(([val, label]) => (
-                  <button key={val} onClick={() => setRpTab(val)}
-                    className={`flex-1 py-2.5 text-xs font-semibold transition cursor-pointer ${
-                      rpTab === val ? 'text-[#1a3a5c] border-b-2 border-[#1a3a5c]' : 'text-gray-400 hover:text-gray-600'
-                    }`}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-              {rpTab === 'costs' ? (
-                <BuilderPanel total={total} totalSqm={totalSqm} rooms={rooms} selRoom={selRoom} messages={messages} />
-              ) : (
-                <DetailsPanel
-                  form={detailForm}
-                  setForm={setDetailForm}
-                  saving={detailSaving}
-                  onSave={saveDetails}
-                />
-              )}
-            </>
-          ) : (
-            <ClientPanel
-              style={style} setStyle={setStyle}
-              budget={budget} setBudget={setBudget}
-              finishes={finishes} setFinishes={setFinishes}
-              msgText={msgText} setMsgText={setMsgText}
-              messages={messages} onSend={sendMessage}
-            />
-          )}
-        </div>
+        {/* ── RIGHT PANEL / AI PANEL */}
+        {view === 'client' && aiClientOpen ? (
+          <ClientAIPanel
+            messages={aiClientMsgs}
+            loading={aiLoading}
+            input={aiClientInput}
+            setInput={setAiClientInput}
+            onSend={sendClientAI}
+            onClose={() => setAiClientOpen(false)}
+            suggestions={getAISuggestions(rooms)}
+            onSuggestion={msg => sendClientAI(msg)}
+            width={aiPanelWidth}
+            onResizeStart={handleAIPanelResize}
+          />
+        ) : (
+          <div className="w-[240px] shrink-0 bg-white border-l border-gray-100 flex flex-col overflow-y-auto">
+            {view === 'builder' ? (
+              <>
+                {/* Tab bar */}
+                <div className="flex border-b border-gray-100 shrink-0">
+                  {[['costs','Costs'],['details','Details']].map(([val, label]) => (
+                    <button key={val} onClick={() => setRpTab(val)}
+                      className={`flex-1 py-2.5 text-xs font-semibold transition cursor-pointer ${
+                        rpTab === val ? 'text-[#1a3a5c] border-b-2 border-[#1a3a5c]' : 'text-gray-400 hover:text-gray-600'
+                      }`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {rpTab === 'costs' ? (
+                  <BuilderPanel
+                    baseCost={baseCost} withMargin={withMargin} total={total} totalSqm={totalSqm}
+                    rooms={rooms} selRoom={selRoom} messages={messages}
+                    wallType={wallType} setWallType={setWallType}
+                    floorType={floorType} setFloorType={setFloorType}
+                    roofType={roofType} setRoofType={setRoofType}
+                    margin={margin} setMargin={setMargin}
+                    gstOn={gstOn} setGstOn={setGstOn}
+                    builderNotes={builderNotes} setBuilderNotes={setBuilderNotes}
+                    onExportPDF={handleExportPDF}
+                  />
+                ) : (
+                  <DetailsPanel
+                    form={detailForm}
+                    setForm={setDetailForm}
+                    saving={detailSaving}
+                    onSave={saveDetails}
+                  />
+                )}
+              </>
+            ) : (
+              <ClientPanel
+                style={style} setStyle={setStyle}
+                budgetTier={budgetTier} setBudgetTier={setBudgetTier}
+                finishes={finishes} setFinishes={setFinishes}
+                msgText={msgText} setMsgText={setMsgText}
+                messages={messages} onSend={sendMessage}
+              />
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Builder AI floating window */}
+      {aiBuilderOpen && (
+        <BuilderAIFloat
+          messages={aiBuilderMsgs}
+          loading={aiLoading}
+          input={aiBuilderInput}
+          setInput={setAiBuilderInput}
+          onSend={sendBuilderAI}
+          onClose={() => setAiBuilderOpen(false)}
+          suggestions={getBuilderAISuggestions()}
+          onSuggestion={msg => sendBuilderAI(msg)}
+        />
+      )}
 
       {showTemplates && (
         <SmartGeneratorModal onGenerate={loadGeneratedRooms} onClose={() => setShowTemplates(false)} />
@@ -829,62 +1440,118 @@ function DetailsPanel({ form, setForm, saving, onSave }) {
 }
 
 // ─── builder panel ────────────────────────────────────────────────────────────
-function BuilderPanel({ total, totalSqm, rooms, selRoom, messages }) {
+function BuilderPanel({
+  baseCost, withMargin, total, totalSqm, rooms, selRoom, messages,
+  wallType, setWallType, floorType, setFloorType, roofType, setRoofType,
+  margin, setMargin, gstOn, setGstOn, builderNotes, setBuilderNotes, onExportPDF,
+}) {
+  const selDef = selRoom ? ROOM_DEFS.find(d => d.type === selRoom.type) : null
+  const selBase = selRoom ? cost(selRoom) * (WALL_MULT[wallType]||1) * (FLOOR_MULT[floorType]||1) * (ROOF_MULT[roofType]||1) : 0
+  const selAdj  = selBase * (1 + margin/100) * (gstOn ? 1.1 : 1)
+  const selSqm  = selRoom ? ((selRoom.w/MPX)*(selRoom.h/MPX)).toFixed(1) : 0
   return (
     <>
-      <div className="m-3 bg-[#1a3a5c] rounded-xl px-4 py-4 shrink-0">
+      {/* Total cost card */}
+      <div className="m-3 bg-[#1a3a5c] rounded-xl px-4 py-3 shrink-0">
         <p className="text-white/40 text-[10px] uppercase tracking-widest font-semibold mb-1">Total Project Cost</p>
-        <p className="text-white text-2xl font-bold tracking-tight leading-none">{fmtAUD(total)}</p>
-        <p className="text-white/30 text-[10px] mt-2">{rooms.length} room{rooms.length !== 1 ? 's' : ''} · {totalSqm.toFixed(0)} m² est.</p>
+        <p className="text-white text-xl font-bold tracking-tight leading-none">{fmtAUD(total)}</p>
+        <div className="text-white/30 text-[9px] mt-2 space-y-0.5">
+          <div className="flex justify-between"><span>Base cost</span><span>{fmtAUD(baseCost)}</span></div>
+          <div className="flex justify-between"><span>Margin ({margin}%)</span><span>+{fmtAUD(withMargin - baseCost)}</span></div>
+          {gstOn && <div className="flex justify-between"><span>GST (10%)</span><span>+{fmtAUD(total - withMargin)}</span></div>}
+        </div>
+        <p className="text-white/20 text-[9px] mt-1">{rooms.length} rooms · {totalSqm.toFixed(0)} m²</p>
       </div>
 
+      {/* Margin + GST controls */}
+      <div className="px-4 py-3 border-b border-gray-50 space-y-2.5">
+        <div className="flex items-center gap-2">
+          <label className="text-[10px] text-gray-400 w-14 shrink-0">Margin</label>
+          <input type="range" min={0} max={40} step={1} value={margin} onChange={e => setMargin(+e.target.value)}
+            className="flex-1 accent-[#1a3a5c] cursor-pointer" />
+          <span className="text-[11px] font-bold text-[#1a3a5c] w-8 text-right">{margin}%</span>
+        </div>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <div onClick={() => setGstOn(g => !g)}
+            className={`w-8 h-4 rounded-full transition-colors relative cursor-pointer ${gstOn ? 'bg-[#1a3a5c]' : 'bg-gray-200'}`}>
+            <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${gstOn ? 'translate-x-4' : 'translate-x-0.5'}`} />
+          </div>
+          <span className="text-[11px] text-gray-500">GST (10%)</span>
+        </label>
+      </div>
+
+      {/* Materials */}
+      <div className="px-4 py-3 border-b border-gray-50 space-y-2">
+        <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold">Materials</p>
+        {[
+          { label: 'Walls',    value: wallType,  set: setWallType,  opts: WALL_OPTS,  mult: WALL_MULT  },
+          { label: 'Flooring', value: floorType, set: setFloorType, opts: FLOOR_OPTS, mult: FLOOR_MULT },
+          { label: 'Roof',     value: roofType,  set: setRoofType,  opts: ROOF_OPTS,  mult: ROOF_MULT  },
+        ].map(({ label, value, set, opts, mult }) => (
+          <div key={label}>
+            <div className="flex items-center justify-between mb-0.5">
+              <span className="text-[10px] text-gray-400">{label}</span>
+              <span className={`text-[9px] font-semibold ${mult[value] > 1 ? 'text-amber-500' : mult[value] < 1 ? 'text-emerald-500' : 'text-gray-300'}`}>
+                {mult[value] > 1 ? `+${Math.round((mult[value]-1)*100)}%` : mult[value] < 1 ? `${Math.round((mult[value]-1)*100)}%` : 'base'}
+              </span>
+            </div>
+            <select value={value} onChange={e => set(e.target.value)}
+              className="w-full text-[11px] border border-gray-200 rounded-lg px-2 py-1.5 text-[#1a3a5c] bg-white outline-none cursor-pointer focus:ring-1 focus:ring-[#1a3a5c]/20">
+              {opts.map(o => <option key={o}>{o}</option>)}
+            </select>
+          </div>
+        ))}
+      </div>
+
+      {/* Trade breakdown */}
       <div className="px-4 py-3 border-b border-gray-50">
-        <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-3">Cost by Trade</p>
-        <div className="space-y-2.5">
+        <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-2">By Trade</p>
+        <div className="space-y-1.5">
           {TRADES.map(t => (
-            <div key={t.name}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[11px] text-gray-500">{t.name}</span>
-                <span className="text-[11px] font-semibold text-[#1a3a5c]">{fmtAUD(total * t.pct)}</span>
-              </div>
-              <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${(t.pct / 0.18) * 100}%`, background: 'linear-gradient(90deg, #1a3a5c, #2d5a8c)' }} />
-              </div>
+            <div key={t.name} className="flex items-center justify-between">
+              <span className="text-[11px] text-gray-500">{t.name}</span>
+              <span className="text-[11px] font-semibold text-[#1a3a5c]">{fmtAUD(total * t.pct)}</span>
             </div>
           ))}
         </div>
       </div>
 
+      {/* Selected room */}
       <div className="px-4 py-3 border-b border-gray-50">
         <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-2">Selected Room</p>
         {selRoom ? (
-          <div className="space-y-2">
-            <div>
-              <p className="font-bold text-[#1a3a5c] text-sm">{selRoom.type}</p>
-              <p className="text-gray-400 text-[11px]">{pxToM(selRoom.w)}m × {pxToM(selRoom.h)}m</p>
-              <p className="text-gray-400 text-[11px]">Floor area: {((selRoom.w / MPX) * (selRoom.h / MPX)).toFixed(1)} m²</p>
-            </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              <div className="bg-gray-50 rounded-lg p-2">
-                <p className="text-gray-400 text-[9px] uppercase tracking-wide mb-0.5">Walls</p>
-                <p className="text-[#1a3a5c] text-[11px] font-semibold leading-tight">{selRoom.wallType}</p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-2">
-                <p className="text-gray-400 text-[9px] uppercase tracking-wide mb-0.5">Floor</p>
-                <p className="text-[#1a3a5c] text-[11px] font-semibold leading-tight">{selRoom.floorType}</p>
-              </div>
-            </div>
-            <div className="bg-[#1a3a5c]/5 border border-[#1a3a5c]/10 rounded-lg px-3 py-2 flex items-center justify-between">
-              <span className="text-gray-400 text-[10px] uppercase tracking-wide">Room cost</span>
-              <span className="text-[#1a3a5c] font-bold text-sm">{fmtAUD(cost(selRoom))}</span>
+          <div className="space-y-1.5">
+            <p className="font-bold text-[#1a3a5c] text-sm">{selRoom.type}</p>
+            <p className="text-gray-400 text-[11px]">{pxToM(selRoom.w)}m × {pxToM(selRoom.h)}m · {selSqm} m²</p>
+            {selDef && <p className="text-gray-300 text-[10px]">{fmtAUD(selDef.rate)}/m²{selDef.flat ? ` + ${fmtAUD(selDef.flat)} fixed` : ''}</p>}
+            <div className="bg-[#1a3a5c]/5 border border-[#1a3a5c]/10 rounded-lg px-3 py-1.5 flex justify-between">
+              <span className="text-gray-400 text-[10px]">Room cost (inc. margin{gstOn ? ' + GST' : ''})</span>
+              <span className="text-[#1a3a5c] font-bold text-sm">{fmtAUD(selAdj)}</span>
             </div>
           </div>
         ) : (
-          <p className="text-gray-300 text-[11px] py-2">Click a room to see details</p>
+          <p className="text-gray-300 text-[11px] py-1">Click a room to see details</p>
         )}
       </div>
 
+      {/* Internal notes */}
+      <div className="px-4 py-3 border-b border-gray-50">
+        <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-1.5">Internal Notes <span className="normal-case font-normal">(client cannot see)</span></p>
+        <textarea value={builderNotes} onChange={e => setBuilderNotes(e.target.value)} rows={3}
+          placeholder="Site notes, allowances, exclusions…"
+          className="w-full text-[11px] border border-gray-200 rounded-lg px-2.5 py-2 text-[#1a3a5c] outline-none focus:ring-1 focus:ring-[#1a3a5c]/20 bg-gray-50 focus:bg-white transition resize-none placeholder:text-gray-300" />
+      </div>
+
+      {/* Generate Quote PDF */}
+      <div className="px-4 py-3 border-b border-gray-50">
+        <button onClick={onExportPDF} disabled={rooms.length === 0}
+          className="w-full flex items-center justify-center gap-2 bg-[#1a3a5c] hover:bg-[#243f63] disabled:opacity-30 text-white text-xs font-semibold py-2.5 rounded-xl transition cursor-pointer">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5l3 3 3-3M1 9v1a1 1 0 001 1h8a1 1 0 001-1V9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          Generate Quote PDF
+        </button>
+      </div>
+
+      {/* Client comments */}
       <div className="px-4 py-3 flex-1">
         <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-2">Client Comments</p>
         <div className="space-y-2">
@@ -904,25 +1571,53 @@ function BuilderPanel({ total, totalSqm, rooms, selRoom, messages }) {
 }
 
 // ─── client panel ─────────────────────────────────────────────────────────────
-function ClientPanel({ style, setStyle, budget, setBudget, finishes, setFinishes, msgText, setMsgText, messages, onSend }) {
+function ClientPanel({ style, setStyle, budgetTier, setBudgetTier, finishes, setFinishes, msgText, setMsgText, messages, onSend }) {
+  const theme = STYLE_THEMES[style] ?? STYLE_THEMES.Modern
   return (
     <>
+      {/* Style picker */}
       <div className="px-4 py-4 border-b border-gray-50">
-        <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-2">Style</p>
+        <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-2">Design Style</p>
         <div className="grid grid-cols-2 gap-1.5">
-          {STYLES.map(s => (
-            <button key={s} onClick={() => setStyle(s)}
-              className={`py-2 rounded-xl text-[11px] font-semibold transition cursor-pointer border ${
-                style === s ? 'bg-[#1a3a5c] text-white border-[#1a3a5c]' : 'bg-white text-gray-400 border-gray-100 hover:border-gray-200 hover:text-gray-600'
+          {STYLES.map(s => {
+            const t = STYLE_THEMES[s]
+            return (
+              <button key={s} onClick={() => setStyle(s)}
+                className={`py-2.5 rounded-xl text-[11px] font-semibold transition cursor-pointer border-2 flex flex-col items-center gap-1 ${
+                  style === s ? 'border-[#1a3a5c] shadow-sm' : 'border-gray-100 hover:border-gray-200'
+                }`}
+                style={style === s ? { background: t.fill, color: t.wall } : {}}>
+                <div className="flex gap-0.5">
+                  <div className="w-3 h-3 rounded-sm border" style={{ background: t.fill, borderColor: t.wall }} />
+                  <div className="w-1.5 h-3 rounded-sm" style={{ background: t.wall }} />
+                </div>
+                <span className={style === s ? '' : 'text-gray-500'}>{s}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Budget tier */}
+      <div className="px-4 py-4 border-b border-gray-50">
+        <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-2">Budget Preference</p>
+        <div className="space-y-1.5">
+          {BUDGET_TIERS.map(t => (
+            <button key={t.id} onClick={() => setBudgetTier(t.id)}
+              className={`w-full text-left px-3 py-2.5 rounded-xl text-[12px] font-semibold transition cursor-pointer border-2 ${
+                budgetTier === t.id
+                  ? 'bg-[#1a3a5c] text-white border-[#1a3a5c]'
+                  : 'bg-white text-gray-500 border-gray-100 hover:border-gray-200 hover:text-gray-700'
               }`}>
-              {s}
+              {budgetTier === t.id && <span className="mr-1.5">✓</span>}{t.label}
             </button>
           ))}
         </div>
       </div>
 
+      {/* Finish preferences */}
       <div className="px-4 py-4 border-b border-gray-50">
-        <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-3">Finishes</p>
+        <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-3">Finish Preferences</p>
         <div className="space-y-2.5">
           {Object.entries(FINISHES).map(([key, opts]) => (
             <div key={key}>
@@ -936,17 +1631,10 @@ function ClientPanel({ style, setStyle, budget, setBudget, finishes, setFinishes
         </div>
       </div>
 
-      <div className="px-4 py-4 border-b border-gray-50">
-        <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-1">Budget</p>
-        <p className="text-[#1a3a5c] text-xl font-bold tracking-tight mb-3">{fmtAUD(budget)}</p>
-        <input type="range" min={200000} max={2000000} step={25000} value={budget}
-          onChange={e => setBudget(+e.target.value)} className="w-full accent-[#1a3a5c] cursor-pointer" />
-        <div className="flex justify-between text-[9px] text-gray-300 mt-1"><span>$200k</span><span>$2M</span></div>
-      </div>
-
+      {/* Message builder */}
       <div className="px-4 py-4 flex flex-col flex-1">
         <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-2">Message Builder</p>
-        <div className="flex-1 space-y-2 overflow-y-auto max-h-40 mb-3">
+        <div className="flex-1 space-y-2 overflow-y-auto max-h-36 mb-3">
           {messages.map((m, i) => (
             <div key={i} className={`rounded-xl px-3 py-2 text-[11px] ${m.from === 'client' ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-600'}`}>
               <p className="font-bold text-[9px] uppercase tracking-wide mb-0.5">{m.from}</p>
@@ -954,7 +1642,7 @@ function ClientPanel({ style, setStyle, budget, setBudget, finishes, setFinishes
             </div>
           ))}
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 mb-3">
           <input type="text" value={msgText} onChange={e => setMsgText(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && onSend()} placeholder="Type a message…"
             className="flex-1 text-[11px] border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-1 focus:ring-[#1a3a5c]/20 focus:border-[#1a3a5c]/30" />
@@ -962,6 +1650,13 @@ function ClientPanel({ style, setStyle, budget, setBudget, finishes, setFinishes
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 6h10M6.5 1.5L11 6l-4.5 4.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
         </div>
+        {/* Submit design */}
+        <button
+          onClick={() => alert('Design submitted to your builder!')}
+          className="w-full py-3 rounded-xl text-[13px] font-bold text-white transition cursor-pointer"
+          style={{ background: `linear-gradient(135deg, ${theme.wall}, ${theme.wall}cc)` }}>
+          Submit Design
+        </button>
       </div>
     </>
   )
@@ -969,200 +1664,200 @@ function ClientPanel({ style, setStyle, budget, setBudget, finishes, setFinishes
 
 // ─── smart generator modal ────────────────────────────────────────────────────
 function SmartGeneratorModal({ onGenerate, onClose }) {
-  const [step,      setStep]      = useState(1)
-  const [propType,  setPropType]  = useState('House')
-  const [houseSize, setHouseSize] = useState(350)
-  const [bedrooms,  setBedrooms]  = useState(4)
-  const [bathrooms, setBathrooms] = useState(2)
-  const [extras,    setExtras]    = useState([])
-  const [variant,   setVariant]   = useState(0)
-  const [generated, setGenerated] = useState(false)
+  const [selectedId,  setSelectedId]  = useState(null)
+  const [generated,   setGenerated]   = useState(false)
+  const [customMode,  setCustomMode]  = useState(false)
+  const [bedrooms,    setBedrooms]    = useState(4)
+  const [bathrooms,   setBathrooms]   = useState(2)
+  const [houseSize,   setHouseSize]   = useState(350)
+  const [extras,      setExtras]      = useState([])
+  const [singleGar,   setSingleGar]   = useState(false)
 
   const toggleExtra = e => setExtras(p => p.includes(e) ? p.filter(x => x !== e) : [...p, e])
 
-  const doGenerate = v => {
-    onGenerate(generateFloorPlan({ propertyType: propType, houseSize, bedrooms, bathrooms, extras, variant: v }))
+  const handleTemplate = tpl => {
+    setSelectedId(tpl.id)
+    onGenerate(generateFloorPlan(tpl.params))
     setGenerated(true)
   }
 
-  const handleRegenerate = () => {
-    const next = (variant + 1) % 2
-    setVariant(next)
-    doGenerate(next)
+  const handleCustom = () => {
+    onGenerate(generateFloorPlan({ houseSize, bedrooms, bathrooms, extras, singleGarage: singleGar }))
+    setGenerated(true)
+    setSelectedId('custom')
   }
 
-  const PROP_TYPES = [
-    { id: 'House',       desc: 'Standard single dwelling' },
-    { id: 'Duplex',      desc: 'Two units, side by side'  },
-    { id: 'Townhouse',   desc: 'Multi-level narrow lot'   },
-    { id: 'Granny Flat', desc: 'Compact self-contained'   },
-  ]
+  const TEMPLATE_ICONS = {
+    aussie_family: (
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <path d="M4 16L14 7l10 9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M7 14v8h14v-8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <rect x="11" y="18" width="6" height="4" rx="0.5" stroke="currentColor" strokeWidth="1.4"/>
+        <rect x="4" y="18" width="4" height="4" stroke="currentColor" strokeWidth="1.2"/>
+      </svg>
+    ),
+    first_home: (
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <path d="M5 16L14 8l9 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M8 14v8h12v-8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <rect x="11" y="18" width="5" height="4" rx="0.5" stroke="currentColor" strokeWidth="1.4"/>
+      </svg>
+    ),
+    executive: (
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <path d="M2 17L14 6l12 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M5 15v9h18v-9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <rect x="12" y="19" width="5" height="5" rx="0.5" stroke="currentColor" strokeWidth="1.4"/>
+        <rect x="5" y="19" width="4" height="5" stroke="currentColor" strokeWidth="1.2"/>
+        <path d="M19 19v-4h4v4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      </svg>
+    ),
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-6"
       style={{ background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(6px)' }}
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden modal-enter">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden modal-enter">
 
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              {step > 1 && !generated && (
-                <button onClick={() => setStep(s => s - 1)}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 transition cursor-pointer">
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 11L5 7l4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </button>
-              )}
-              <div>
-                <h2 className="text-[#1a3a5c] font-bold text-base">
-                  {generated ? 'Floor Plan Generated' : 'Generate Floor Plan'}
-                </h2>
-                {!generated && <p className="text-gray-400 text-xs mt-0.5">Step {step} of 4</p>}
-              </div>
-            </div>
+        <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h2 className="text-[#1a3a5c] font-bold text-base">
+              {generated ? 'Floor Plan Ready' : customMode ? 'Custom Floor Plan' : 'Choose a Template'}
+            </h2>
+            <p className="text-gray-400 text-xs mt-0.5">
+              {generated ? 'Drag rooms to reposition · handles to resize · ⌘Z to undo'
+                : customMode ? 'Configure your custom design below'
+                : 'Real Australian builder layouts — edit after loading'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {customMode && !generated && (
+              <button onClick={() => setCustomMode(false)}
+                className="text-[11px] text-gray-400 hover:text-gray-600 cursor-pointer transition">
+                ← Templates
+              </button>
+            )}
             <button onClick={onClose}
               className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 transition cursor-pointer">
               <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 2l9 9M11 2l-9 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
             </button>
           </div>
-          {!generated && (
-            <div className="flex gap-1.5">
-              {[1,2,3,4].map(n => (
-                <div key={n} className={`h-1 flex-1 rounded-full transition-all duration-300 ${n <= step ? 'bg-[#1a3a5c]' : 'bg-gray-100'}`} />
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Body */}
-        <div className="px-6 py-6 min-h-[280px]">
+        <div className="px-6 py-5 min-h-[260px]">
           {generated ? (
-            <div className="text-center py-4">
+            <div className="text-center py-6">
               <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
                   <circle cx="13" cy="13" r="11" stroke="#10b981" strokeWidth="1.6"/>
                   <path d="M8 13l3.5 3.5 7-7" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>
-              <h3 className="text-[#1a3a5c] font-bold text-lg mb-1">Floor plan loaded!</h3>
-              <p className="text-gray-400 text-sm mb-0.5">{bedrooms} bed · {bathrooms} bath · {houseSize}m² {propType.toLowerCase()}</p>
-              {extras.length > 0 && <p className="text-gray-400 text-sm mb-4">+ {extras.join(', ')}</p>}
-              <p className="text-gray-300 text-xs mt-3 mb-6">Drag rooms to reposition · resize using handles · ⌘Z to undo</p>
-              <button onClick={handleRegenerate}
-                className="inline-flex items-center gap-2 text-xs font-semibold text-[#1a3a5c] border border-[#1a3a5c]/20 hover:border-[#1a3a5c]/40 hover:bg-[#1a3a5c]/5 px-4 py-2.5 rounded-xl transition cursor-pointer">
-                <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                  <path d="M11 6.5a4.5 4.5 0 11-9 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                  <path d="M11 2.5v4h-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                Try different layout
-              </button>
+              <h3 className="text-[#1a3a5c] font-bold text-lg mb-2">
+                {selectedId !== 'custom'
+                  ? (FLOOR_TEMPLATES.find(t => t.id === selectedId)?.name ?? 'Custom Plan')
+                  : 'Custom Floor Plan'}
+              </h3>
+              <p className="text-gray-300 text-xs">Drag rooms to reposition · handles to resize</p>
             </div>
 
-          ) : step === 1 ? (
-            <div>
-              <p className="text-[#1a3a5c] font-semibold text-sm mb-5">What type of property are you building?</p>
-              <div className="grid grid-cols-2 gap-3">
-                {PROP_TYPES.map(pt => (
-                  <button key={pt.id} onClick={() => setPropType(pt.id)}
-                    className={`p-4 rounded-xl border-2 text-left transition cursor-pointer ${
-                      propType === pt.id ? 'border-[#1a3a5c] bg-[#1a3a5c]/5' : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'
-                    }`}>
-                    <PropIcon type={pt.id} active={propType === pt.id} />
-                    <div className="font-bold text-[#1a3a5c] text-sm mt-3">{pt.id}</div>
-                    <div className="text-gray-400 text-[11px] mt-0.5">{pt.desc}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-          ) : step === 2 ? (
-            <div>
-              <p className="text-[#1a3a5c] font-semibold text-sm mb-6">How large is the house?</p>
-              <div className="text-center mb-8">
-                <div className="text-5xl font-bold text-[#1a3a5c] tracking-tight leading-none tabular-nums">
-                  {houseSize}<span className="text-2xl font-normal text-gray-300 ml-1">m²</span>
-                </div>
-                <div className="text-gray-400 text-sm mt-3 font-medium">{sizeLabel(houseSize)}</div>
-              </div>
-              <input type="range" min={80} max={800} step={10} value={houseSize}
-                onChange={e => setHouseSize(+e.target.value)}
-                className="w-full accent-[#1a3a5c] cursor-pointer" />
-              <div className="flex justify-between text-[10px] text-gray-300 mt-2">
-                <span>80m²</span><span>800m²</span>
-              </div>
-            </div>
-
-          ) : step === 3 ? (
-            <div>
-              <p className="text-[#1a3a5c] font-semibold text-sm mb-8">Bedrooms and bathrooms?</p>
-              <div className="grid grid-cols-2 gap-8">
+          ) : customMode ? (
+            <div className="space-y-5">
+              <div className="grid grid-cols-2 gap-4">
                 {[
                   { label: 'Bedrooms',  val: bedrooms,  set: setBedrooms,  min: 1, max: 6 },
                   { label: 'Bathrooms', val: bathrooms, set: setBathrooms, min: 1, max: 4 },
                 ].map(({ label, val, set, min, max }) => (
                   <div key={label} className="text-center">
-                    <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-5">{label}</p>
-                    <div className="flex items-center justify-center gap-5">
+                    <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-3">{label}</p>
+                    <div className="flex items-center justify-center gap-4">
                       <button onClick={() => set(v => Math.max(min, v - 1))}
-                        className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-xl font-bold transition cursor-pointer ${
-                          val <= min ? 'border-gray-100 text-gray-200' : 'border-gray-200 text-gray-500 hover:border-[#1a3a5c] hover:text-[#1a3a5c]'
-                        }`}>−</button>
-                      <span className="text-5xl font-bold text-[#1a3a5c] w-12 text-center tabular-nums">{val}</span>
+                        className="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold transition cursor-pointer border-gray-200 text-gray-500 hover:border-[#1a3a5c] hover:text-[#1a3a5c]">−</button>
+                      <span className="text-3xl font-bold text-[#1a3a5c] w-8 text-center tabular-nums">{val}</span>
                       <button onClick={() => set(v => Math.min(max, v + 1))}
-                        className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-xl font-bold transition cursor-pointer ${
-                          val >= max ? 'border-gray-100 text-gray-200' : 'border-gray-200 text-gray-500 hover:border-[#1a3a5c] hover:text-[#1a3a5c]'
-                        }`}>+</button>
+                        className="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold transition cursor-pointer border-gray-200 text-gray-500 hover:border-[#1a3a5c] hover:text-[#1a3a5c]">+</button>
                     </div>
                   </div>
                 ))}
               </div>
+              <div>
+                <div className="flex justify-between mb-1.5">
+                  <span className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold">House size</span>
+                  <span className="text-[11px] font-bold text-[#1a3a5c]">{houseSize}m²</span>
+                </div>
+                <input type="range" min={120} max={600} step={10} value={houseSize}
+                  onChange={e => setHouseSize(+e.target.value)} className="w-full accent-[#1a3a5c] cursor-pointer" />
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <div onClick={() => setSingleGar(g => !g)}
+                  className={`w-8 h-4 rounded-full transition-colors relative cursor-pointer ${singleGar ? 'bg-[#1a3a5c]' : 'bg-gray-200'}`}>
+                  <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${singleGar ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                </div>
+                <span className="text-[11px] text-gray-500">Single garage</span>
+              </label>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-2">Optional extras</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {EXTRA_ROOMS.map(e => (
+                    <button key={e} onClick={() => toggleExtra(e)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer ${
+                        extras.includes(e) ? 'bg-[#1a3a5c] text-white border-[#1a3a5c]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                      }`}>
+                      {e}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
           ) : (
-            <div>
-              <p className="text-[#1a3a5c] font-semibold text-sm mb-1">Any extra rooms?</p>
-              <p className="text-gray-400 text-xs mb-5">Optional — tap to toggle on or off</p>
-              <div className="flex flex-wrap gap-2">
-                {EXTRA_ROOMS.map(e => (
-                  <button key={e} onClick={() => toggleExtra(e)}
-                    className={`px-3.5 py-2 rounded-full text-xs font-semibold border transition cursor-pointer ${
-                      extras.includes(e)
-                        ? 'bg-[#1a3a5c] text-white border-[#1a3a5c] shadow-sm'
-                        : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700'
-                    }`}>
-                    {e}
-                  </button>
-                ))}
-              </div>
+            <div className="space-y-3">
+              {FLOOR_TEMPLATES.map(tpl => (
+                <button key={tpl.id} onClick={() => handleTemplate(tpl)}
+                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-gray-100 hover:border-[#1a3a5c] hover:bg-[#1a3a5c]/3 text-left transition cursor-pointer group">
+                  <div className="w-12 h-12 rounded-xl bg-[#1a3a5c]/6 flex items-center justify-center text-[#1a3a5c] shrink-0 group-hover:bg-[#1a3a5c]/10 transition">
+                    {TEMPLATE_ICONS[tpl.id]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-bold text-[#1a3a5c] text-sm">{tpl.name}</span>
+                      <span className="text-gray-300 text-[10px] font-medium">{tpl.size}</span>
+                    </div>
+                    <p className="text-gray-400 text-[11px] mt-0.5">{tpl.desc}</p>
+                  </div>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-gray-300 group-hover:text-[#1a3a5c] transition shrink-0">
+                    <path d="M4 2l5 5-5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              ))}
+              <button onClick={() => setCustomMode(true)}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-gray-200 text-gray-400 text-xs font-semibold hover:border-gray-300 hover:text-gray-600 transition cursor-pointer mt-1">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                Custom layout
+              </button>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="px-6 pb-6">
-          {generated ? (
-            <button onClick={onClose}
-              className="w-full bg-[#1a3a5c] hover:bg-[#243f63] text-white font-semibold text-sm py-3 rounded-xl transition cursor-pointer">
-              Done — start editing
-            </button>
-          ) : step < 4 ? (
-            <button onClick={() => setStep(s => s + 1)}
-              className="w-full flex items-center justify-center gap-2 bg-[#1a3a5c] hover:bg-[#243f63] text-white font-semibold text-sm py-3 rounded-xl transition cursor-pointer">
-              Next
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4 2l4 4-4 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </button>
-          ) : (
-            <button onClick={() => doGenerate(variant)}
-              className="w-full flex items-center justify-center gap-2 bg-[#1a3a5c] hover:bg-[#243f63] text-white font-semibold text-sm py-3 rounded-xl transition cursor-pointer">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <rect x="1" y="5" width="12" height="8" rx="1" stroke="white" strokeWidth="1.4"/>
-                <path d="M4 5V3.5a3 3 0 016 0V5" stroke="white" strokeWidth="1.4" strokeLinecap="round"/>
-              </svg>
-              Generate floor plan
-            </button>
-          )}
-        </div>
+        {(generated || customMode) && (
+          <div className="px-6 pb-6">
+            {generated ? (
+              <button onClick={onClose}
+                className="w-full bg-[#1a3a5c] hover:bg-[#243f63] text-white font-semibold text-sm py-3 rounded-xl transition cursor-pointer">
+                Start editing
+              </button>
+            ) : (
+              <button onClick={handleCustom}
+                className="w-full flex items-center justify-center gap-2 bg-[#1a3a5c] hover:bg-[#243f63] text-white font-semibold text-sm py-3 rounded-xl transition cursor-pointer">
+                Generate floor plan
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -1213,23 +1908,28 @@ const HPOS = {
 }
 const HCURSOR = { nw: 'nw-resize', n: 'n-resize', ne: 'ne-resize', e: 'e-resize', se: 'se-resize', s: 's-resize', sw: 'sw-resize', w: 'w-resize' }
 
-function RoomBlock({ room, selected, view, cost, onMouseDown, onHandleDown }) {
+function RoomBlock({ room, selected, view, clientStyle, cost, highlighted, onMouseDown, onHandleDown }) {
   const isCorridor = room.type === 'Corridor'
+  const theme = STYLE_THEMES[clientStyle] ?? null
+  const fillColor = (view === 'client' && theme) ? theme.fill : '#fff'
+  const textColor = (view === 'client' && theme) ? theme.wall : '#1c1c1c'
   return (
-    <div onMouseDown={onMouseDown} style={{
-      position: 'absolute', left: room.x, top: room.y, width: room.w, height: room.h,
-      background: '#fff',
-      border: selected ? '2px solid rgba(28,28,28,0.35)' : 'none',
-      cursor: 'move', zIndex: selected ? 10 : 1,
-      boxShadow: selected ? '0 0 0 3px rgba(28,28,28,0.1)' : 'none',
-    }}>
+    <div onMouseDown={onMouseDown}
+      className={highlighted ? 'ai-highlight' : undefined}
+      style={{
+        position: 'absolute', left: room.x, top: room.y, width: room.w, height: room.h,
+        background: fillColor,
+        border: selected ? `2px solid ${textColor}59` : 'none',
+        cursor: 'move', zIndex: selected ? 10 : 1,
+        boxShadow: selected ? `0 0 0 3px ${textColor}1a` : 'none',
+      }}>
       <div className="absolute inset-0 flex flex-col items-center justify-center px-2 pointer-events-none">
-        <span className="text-[#1c1c1c] font-bold tracking-wider leading-tight text-center"
-          style={{ fontSize: isCorridor ? 8 : 9 }}>
+        <span className="font-bold tracking-wider leading-tight text-center"
+          style={{ fontSize: isCorridor ? 8 : 9, color: textColor }}>
           {isCorridor ? 'HALL' : room.type.toUpperCase()}
         </span>
         {!isCorridor && (
-          <span className="text-[#1c1c1c]/40 mt-0.5" style={{ fontSize: 8 }}>
+          <span className="mt-0.5" style={{ fontSize: 8, color: textColor, opacity: 0.4 }}>
             {pxToM(room.w)}m × {pxToM(room.h)}m
           </span>
         )}
@@ -1249,114 +1949,236 @@ function getFurniturePaths(room) {
   const { x, y, w, h } = room
   if (w < 55 || h < 48) return []
   const paths = []
-  const P = 8
-  const R = (lx, ly, lw, lh) => lw > 0 && lh > 0 ? `M ${lx} ${ly} h ${lw} v ${lh} h ${-lw} Z` : null
+  const P = 10
+  const R = (lx, ly, lw, lh) => lw > 2 && lh > 2 ? `M ${lx} ${ly} h ${lw} v ${lh} h ${-lw} Z` : null
   const L = (x1, y1, x2, y2) => `M ${x1} ${y1} L ${x2} ${y2}`
   const C = (cx, cy, r) => r > 1 ? `M ${cx+r} ${cy} a ${r} ${r} 0 1 0 ${-2*r} 0 a ${r} ${r} 0 1 0 ${2*r} 0` : null
 
   switch (room.type) {
+    case 'Foyer': {
+      // Door mat near north wall + entry table to one side
+      const matW = Math.min(w * 0.5, 48), matH = 10
+      paths.push(R(x + (w - matW) / 2, y + P, matW, matH))
+      // Entry console table on E wall
+      if (w > 80) {
+        const tW = 8, tH = Math.min(h * 0.3, 28)
+        paths.push(R(x + w - P - tW, y + (h - tH) / 2, tW, tH))
+      }
+      break
+    }
+    case 'Master Bedroom': {
+      // King bed centred, bedside tables, bedhead
+      const bedW2 = Math.min(w - 2*P, w * 0.7)
+      const bedH2 = Math.min(h * 0.58, h - 2*P)
+      const bedX = x + (w - bedW2) / 2
+      const bedY = y + (h - bedH2) / 2 - 4
+      paths.push(R(bedX, bedY, bedW2, bedH2))
+      paths.push(R(bedX, bedY, bedW2, 10))  // headboard
+      const pilW = Math.min(bedW2 * 0.32, 34), pilH = 10
+      paths.push(R(bedX + 4, bedY + 13, pilW, pilH))
+      paths.push(R(bedX + bedW2 - 4 - pilW, bedY + 13, pilW, pilH))
+      const bsW = 14, bsH = 14
+      paths.push(R(bedX - bsW - 3, bedY + bedH2 - bsH - 4, bsW, bsH))
+      paths.push(R(bedX + bedW2 + 3, bedY + bedH2 - bsH - 4, bsW, bsH))
+      break
+    }
+    case 'Walk-in Robe': {
+      // Hanging rail lines on both side walls
+      const railH = 7
+      if (w > 50) {
+        paths.push(R(x + P, y + P, 7, Math.min(h - 2*P, 40)))    // left side clothes
+        paths.push(R(x + w - P - 7, y + P, 7, Math.min(h - 2*P, 40)))  // right side
+        paths.push(L(x + P, y + P + railH, x + P + 7, y + P + railH))
+        paths.push(L(x + w - P - 7, y + P + railH, x + w - P, y + P + railH))
+      }
+      break
+    }
+    case 'Ensuite': {
+      const P2 = 6
+      // Toilet (top-right): cistern + circle bowl
+      const tW = Math.min(w * 0.4, 24)
+      const tX = x + w - P2 - tW, tY = y + P2
+      paths.push(R(tX, tY, tW, 7))
+      const bR = Math.min(tW * 0.35, 8)
+      paths.push(C(tX + tW / 2, tY + 7 + bR + 3, bR))
+      // Vanity (top-left)
+      const vW = Math.min(w - tW - 3*P2, 30), vH = 12
+      paths.push(R(x + P2, y + P2, vW, vH))
+      paths.push(C(x + P2 + vW / 2, y + P2 + vH / 2, 4))
+      // Shower recess (bottom)
+      const sW = Math.min(w - 2*P2, 40), sH = Math.min(h - (P2 + vH + 8 + P2), 32)
+      if (sW > 16 && sH > 16) {
+        const sX = x + (w - sW) / 2, sY = y + P2 + vH + 8
+        paths.push(R(sX, sY, sW, sH))
+        paths.push(C(sX + sW / 2, sY + sH / 2, 4))  // drain circle
+      }
+      break
+    }
     case 'Living Room': {
-      // L-shaped sofa outline
-      const sW = Math.min(w * 0.65, w - 2*P), sD = Math.min(Math.max(14, h * 0.16), 20)
-      const armD = sD, armH = Math.min(h * 0.38, 42)
-      const sX = x + P, sY = y + h - P - sD
-      paths.push(R(sX, sY, sW, sD))           // seat base
-      paths.push(R(sX, sY - armH + sD, armD, armH - sD))  // left arm
+      // Sofa along bottom wall: back + cushion seats
+      const sofaW = Math.min(w * 0.68, w - 2*P)
+      const backH = 8, seatH = 16
+      const sofaX = x + (w - sofaW) / 2
+      const sofaY = y + h - P - backH - seatH
+      paths.push(R(sofaX, sofaY, sofaW, backH))
+      const nCush = Math.max(2, Math.min(4, Math.floor(sofaW / 32)))
+      const cushW = (sofaW - (nCush - 1) * 2) / nCush
+      for (let i = 0; i < nCush; i++) {
+        paths.push(R(sofaX + i * (cushW + 2), sofaY + backH, cushW, seatH))
+      }
+      paths.push(R(sofaX - 7, sofaY, 7, backH + seatH))  // left arm
+      // Coffee table
+      const ctW = sofaW * 0.42, ctH = 14
+      paths.push(R(sofaX + (sofaW - ctW) / 2, sofaY - ctH - 12, ctW, ctH))
+      // Armchair
+      if (h > 120 && w > 150) {
+        const acW = Math.min(26, w * 0.17), acH = 22
+        const acX = x + P, acY = sofaY - 8
+        paths.push(R(acX + 5, acY, acW, acH - 7))
+        paths.push(R(acX + 5, acY - 6, acW, 6))
+        paths.push(R(acX, acY, 5, acH - 7))
+        paths.push(R(acX + 5 + acW, acY, 5, acH - 7))
+      }
       break
     }
     case 'Kitchen': {
-      // bench lines along bottom and one side, small sink rectangle + two circles
-      const bD = 10
-      paths.push(L(x+P, y+h-P-bD, x+w-P, y+h-P-bD))   // bottom bench line (top edge)
-      paths.push(L(x+P, y+h-P, x+w-P, y+h-P))           // bottom bench line (bottom edge)
-      paths.push(L(x+w-P-bD, y+P, x+w-P-bD, y+h-P-bD)) // right bench line (left edge)
-      paths.push(L(x+w-P, y+P, x+w-P, y+h-P-bD))        // right bench line (right edge)
-      // sink: small rectangle with two circles
-      const skW = 16, skH = 11, skX = x + P + (w-2*P-skW)/2, skY = y + h - P - bD + 1
-      paths.push(R(skX, skY, skW, skH - 2))
-      const r = 3.5
-      paths.push(C(skX + skW/2 - r - 1, skY + (skH-2)/2, r))
-      paths.push(C(skX + skW/2 + r + 1, skY + (skH-2)/2, r))
+      const bD = 12
+      // Bench along south wall (bottom)
+      paths.push(R(x + P, y + h - P - bD, w - 2*P, bD))
+      // Bench along east wall (right)
+      paths.push(R(x + w - P - bD, y + P, bD, h - 2*P - bD))
+      // Stovetop burners on south bench
+      const nB = w > 120 ? 4 : 2
+      const bSpacing = (w - 2*P - 2*bD) / nB
+      for (let i = 0; i < nB; i++) {
+        paths.push(C(x + P + bD / 2 + (i + 0.5) * bSpacing, y + h - P - bD / 2, 4))
+      }
+      // Double sink on east bench
+      const skY = y + P + 6, skH = 10
+      paths.push(R(x + w - P - bD + 1, skY, bD - 2, skH))
+      paths.push(R(x + w - P - bD + 1, skY + skH + 2, bD - 2, skH))
+      // Fridge top-left
+      paths.push(R(x + P, y + P, Math.min(bD + 4, 18), Math.min(h * 0.18, 26)))
+      // Island bench centred (if room is large enough)
+      if (w > 130 && h > 130) {
+        const isW = Math.min(w * 0.44, 72), isH = Math.min(h * 0.3, 36)
+        const isX = x + (w - isW) / 2 - 8, isY = y + (h - isH) / 2 - 4
+        paths.push(R(isX, isY, isW, isH))
+      }
       break
     }
     case 'Bedroom': {
-      // simple bed rectangle + headboard line at top
-      const bW = Math.min(w - 2*P, Math.max(w * 0.65, 50))
-      const bH = Math.min(h * 0.55, h - 2*P, Math.max(bW * 0.6, 34))
-      const bX = x + (w - bW) / 2, bY = y + (h - bH) / 2
-      paths.push(R(bX, bY, bW, bH))
-      paths.push(L(bX, bY + 9, bX + bW, bY + 9))  // headboard line
+      const bedW2 = Math.min(w - 2*P, w * 0.68)
+      const bedH2 = Math.min(h * 0.58, h - 2*P)
+      const bedX = x + (w - bedW2) / 2
+      const bedY = y + (h - bedH2) / 2 - 2
+      paths.push(R(bedX, bedY, bedW2, bedH2))
+      paths.push(R(bedX, bedY, bedW2, 10))  // headboard
+      const pilW = Math.min(bedW2 * 0.38, 30), pilH = 10
+      paths.push(R(bedX + (bedW2 - pilW) / 2, bedY + 13, pilW, pilH))
+      // Built-in robe (BIR) — thin rect on east wall
+      const birW = 8, birH = Math.min(h * 0.5, 44)
+      paths.push(R(x + w - P - birW, y + (h - birH) / 2, birW, birH))
+      paths.push(L(x + w - P - birW, y + (h - birH) / 2, x + w - P - birW, y + (h + birH) / 2))
       break
     }
     case 'Bathroom': {
-      // toilet (rounded rect), shower square in corner, vanity line
-      const tW = Math.min(w * 0.35, 22), tH = Math.min(h * 0.42, 30)
-      const tX = x + w - P - tW, tY = y + P
-      paths.push(R(tX, tY, tW, tH * 0.28))         // cistern
-      paths.push(C(tX + tW/2, tY + tH * 0.64, Math.min(tW*0.4, tH*0.3)))  // bowl
-      const shS = Math.min(Math.min(w - tW - 3*P, h * 0.44), 36)
-      if (shS > 14) {
-        paths.push(R(x + P, y + h - P - shS, shS, shS))  // shower square
+      const P2 = 8
+      // Toilet (top-right): small rect cistern + circle bowl
+      const tW = Math.min(w * 0.38, 24)
+      const tX = x + w - P2 - tW, tY = y + P2
+      paths.push(R(tX, tY, tW, 7))                      // cistern
+      const bR = Math.min(tW * 0.35, 9)
+      paths.push(C(tX + tW / 2, tY + 7 + bR + 3, bR))  // bowl (circle)
+      // Vanity (top-left): rect with single basin circle
+      const vW = Math.min(w - tW - 3*P2, 32), vH = 14
+      paths.push(R(x + P2, y + P2, vW, vH))
+      paths.push(C(x + P2 + vW / 2, y + P2 + vH / 2, 4))
+      // Bathtub: simple oval (outer ellipse + inner ellipse)
+      const tubW = Math.min(w - 2*P2 - 2, 52)
+      const tubH = Math.min(h - (P2 + vH + 12 + P2), h * 0.48)
+      const tubX = x + (w - tubW) / 2
+      const tubY = y + P2 + vH + 10
+      if (tubW > 20 && tubH > 28) {
+        const rx = tubW / 2, ry = tubH / 2
+        const cx = tubX + rx, cy = tubY + ry
+        paths.push(`M ${cx + rx} ${cy} a ${rx} ${ry} 0 1 0 ${-2*rx} 0 a ${rx} ${ry} 0 1 0 ${2*rx} 0`)
+        const irx = rx * 0.72, iry = ry * 0.72
+        paths.push(`M ${cx + irx} ${cy} a ${irx} ${iry} 0 1 0 ${-2*irx} 0 a ${irx} ${iry} 0 1 0 ${2*irx} 0`)
       }
-      paths.push(L(x + P, y + P, x + P + Math.min(w * 0.4, 28), y + P))  // vanity line
       break
     }
     case 'Dining Room': {
-      const tW = Math.min(w * 0.5, 64), tH = Math.min(h * 0.4, 48)
+      const tW = Math.min(w * 0.52, w - 2*P), tH = Math.min(h * 0.46, h - 2*P)
       const tX = x + (w - tW) / 2, tY = y + (h - tH) / 2
-      paths.push(R(tX, tY, tW, tH))  // table
-      const cW = 10, cH = 8, gap = 4
-      const cols = Math.max(2, Math.min(4, Math.floor(tW / (cW + gap))))
-      const startCX = tX + (tW - cols * (cW + gap) + gap) / 2
-      for (let i = 0; i < cols; i++) {
-        const cx = startCX + i * (cW + gap)
+      paths.push(R(tX, tY, tW, tH))
+      const cW = 12, cH = 9, cGap = 5
+      const nH = Math.max(2, Math.min(5, Math.floor((tW + cGap) / (cW + cGap))))
+      const sH = tX + (tW - (nH * (cW + cGap) - cGap)) / 2
+      for (let i = 0; i < nH; i++) {
+        const cx = sH + i * (cW + cGap)
         paths.push(R(cx, tY - cH - 3, cW, cH))
         paths.push(R(cx, tY + tH + 3, cW, cH))
       }
-      paths.push(R(tX - cH - 3, tY + (tH - cW) / 2, cH, cW))  // left chair
-      paths.push(R(tX + tW + 3, tY + (tH - cW) / 2, cH, cW))  // right chair
-      break
-    }
-    case 'Garage': {
-      // 2 car outlines: rectangles with windshield line
-      const carW = Math.min((w - 3*P) / 2, 56), carH = Math.min(h - 2*P, 28)
-      const carY = y + (h - carH) / 2
-      if (w > 110) {
-        const c1x = x + P, c2x = x + 2*P + carW
-        paths.push(R(c1x, carY, carW, carH))
-        paths.push(L(c1x + 5, carY + 7, c1x + carW - 5, carY + 7))
-        paths.push(R(c2x, carY, carW, carH))
-        paths.push(L(c2x + 5, carY + 7, c2x + carW - 5, carY + 7))
-      } else {
-        const cW2 = Math.min(w - 2*P, 56), cX = x + (w - cW2) / 2
-        paths.push(R(cX, carY, cW2, carH))
-        paths.push(L(cX + 5, carY + 7, cX + cW2 - 5, carY + 7))
+      const nV = Math.max(1, Math.min(3, Math.floor((tH + cGap) / (cH + cGap + 4))))
+      const sV = tY + (tH - (nV * (cH + cGap) - cGap)) / 2
+      for (let i = 0; i < nV; i++) {
+        const cy = sV + i * (cH + cGap)
+        paths.push(R(tX - cH - 3, cy, cH, cW))
+        paths.push(R(tX + tW + 3, cy, cH, cW))
       }
       break
     }
     case 'Laundry': {
-      const mS = Math.min(w - 2*P, h - 2*P, 32)
-      const mX = x + (w - mS) / 2, mY = y + (h - mS) / 2
-      paths.push(R(mX, mY, mS, mS))
-      paths.push(C(mX + mS/2, mY + mS/2, mS * 0.28))
+      // Washer + Dryer side by side
+      const mS = Math.min((w - 2*P - 4) / 2, h - 2*P, 34)
+      if (mS < 16) break
+      const mY = y + (h - mS) / 2
+      const wX = x + (w - 2*mS - 4) / 2
+      // Washer
+      paths.push(R(wX, mY, mS, mS))
+      paths.push(C(wX + mS / 2, mY + mS / 2, mS * 0.3))
+      // Dryer
+      const dX = wX + mS + 4
+      paths.push(R(dX, mY, mS, mS))
+      paths.push(C(dX + mS / 2, mY + mS / 2, mS * 0.28))
+      paths.push(C(dX + mS / 2, mY + mS / 2, mS * 0.1))
+      break
+    }
+    case 'Garage': {
+      const carW = Math.min((w - 3*P) / 2, 70)
+      const carH = Math.min(h - 2*P, 34)
+      const carY = y + (h - carH) / 2
+      if (w > 130) {
+        const c1x = x + P, c2x = x + w - P - carW
+        paths.push(R(c1x, carY, carW, carH))
+        paths.push(L(c1x + 4, carY + 8, c1x + carW - 4, carY + 8))
+        paths.push(R(c2x, carY, carW, carH))
+        paths.push(L(c2x + 4, carY + 8, c2x + carW - 4, carY + 8))
+      } else {
+        const cX = x + (w - carW) / 2
+        paths.push(R(cX, carY, carW, carH))
+        paths.push(L(cX + 4, carY + 8, cX + carW - 4, carY + 8))
+      }
       break
     }
     case 'Study':
     case 'Home Office': {
-      const dW = Math.min(w - 2*P, 60), dD = 10
-      paths.push(L(x+P, y+P, x+P+dW, y+P))         // desk top edge
-      paths.push(L(x+P, y+P+dD, x+P+dW, y+P+dD))   // desk bottom edge
+      const dW = Math.min(w - 2*P, 64), dH = 14
+      paths.push(R(x + P, y + P, dW, dH))
+      paths.push(R(x + P + dW / 2 - 10, y + P + dH + 4, 20, 16))
       break
     }
     case 'Theatre Room': {
-      const sW = 11, sH = 9, sGx = 4, sGy = 6
+      const sW = 13, sH = 10, sGx = 5, sGy = 7
       const cols = Math.max(2, Math.min(5, Math.floor((w - 2*P) / (sW + sGx))))
-      const rows = Math.max(1, Math.min(3, Math.floor((h - 2*P - 10) / (sH + sGy))))
+      const rows = Math.max(1, Math.min(3, Math.floor((h - 2*P - 14) / (sH + sGy))))
       const seatsW = cols * (sW + sGx) - sGx
+      paths.push(R(x + P, y + P, w - 2*P, 6))  // screen
       const sStartX = x + (w - seatsW) / 2
       for (let row = 0; row < rows; row++) {
         for (let col = 0; col < cols; col++) {
-          const sx = sStartX + col * (sW + sGx), sy = y + P + 10 + row * (sH + sGy)
+          const sx = sStartX + col * (sW + sGx), sy = y + P + 14 + row * (sH + sGy)
           if (sx + sW <= x + w - P && sy + sH <= y + h - P) paths.push(R(sx, sy, sW, sH))
         }
       }
@@ -1369,12 +2191,82 @@ function getFurniturePaths(room) {
       break
     }
     case 'Alfresco': {
-      const r = Math.min(w, h) * 0.18
-      paths.push(C(x + w/2, y + h/2, r))
+      const tS = Math.min(w, h) * 0.32
+      const tX = x + (w - tS) / 2, tY = y + (h - tS) / 2
+      paths.push(C(tX + tS / 2, tY + tS / 2, tS / 2))
+      const cR = tS * 0.15
+      ;[[-1,0],[1,0],[0,-1],[0,1]].forEach(([dx, dy]) => {
+        paths.push(C(tX + tS / 2 + dx * (tS / 2 + cR + 4), tY + tS / 2 + dy * (tS / 2 + cR + 4), cR))
+      })
       break
     }
   }
   return paths.filter(Boolean)
+}
+
+// ─── site layer (north arrow, trees, block boundary, entrance path) ───────────
+function SiteLayer({ rooms, zoom, CW, CH }) {
+  if (!rooms.length) return null
+  const xs = rooms.map(r => r.x), ys = rooms.map(r => r.y)
+  const x2s = rooms.map(r => r.x + r.w), y2s = rooms.map(r => r.y + r.h)
+  const minX = Math.min(...xs), minY = Math.min(...ys)
+  const maxX = Math.max(...x2s), maxY = Math.max(...y2s)
+  const M = 56  // block margin
+  const bx = minX - M, by = minY - M, bw = (maxX - minX) + M * 2, bh = (maxY - minY) + M * 2
+
+  const foyer = rooms.find(r => r.type === 'Foyer')
+  const epX = foyer ? foyer.x + foyer.w / 2 : null
+
+  // fixed tree positions relative to block boundary
+  const trees = [
+    { cx: bx + 22, cy: by + bh * 0.38, r: 15 },
+    { cx: bx + 36, cy: by + bh * 0.62, r: 9 },
+    { cx: maxX + M * 0.4, cy: by + bh * 0.30, r: 13 },
+    { cx: maxX + M * 0.55, cy: by + bh * 0.58, r: 8 },
+    { cx: minX + (maxX - minX) * 0.55, cy: maxY + M * 0.55, r: 11 },
+  ]
+  const naX = maxX + M - 22, naY = by + 28
+
+  return (
+    <svg style={{
+      position: 'absolute', top: 0, left: 0, width: CW, height: CH,
+      transform: `scale(${zoom})`, transformOrigin: 'top left',
+      pointerEvents: 'none', zIndex: 2,
+    }}>
+      {/* Block boundary */}
+      <rect x={bx} y={by} width={bw} height={bh}
+        fill="none" stroke="#b8c4cc" strokeWidth={1.5} strokeDasharray="12 7" rx={4} />
+      {/* Entrance path */}
+      {foyer && (
+        <line x1={epX} y1={foyer.y} x2={epX} y2={by + 4}
+          stroke="#b0bbc4" strokeWidth={10} strokeLinecap="round" opacity={0.35} />
+      )}
+      {/* Tree circles */}
+      {trees.map((t, i) => (
+        <g key={i}>
+          <circle cx={t.cx} cy={t.cy} r={t.r} fill="none" stroke="#93b893" strokeWidth={1.3} />
+          <circle cx={t.cx} cy={t.cy} r={t.r * 0.45} fill="none" stroke="#93b893" strokeWidth={0.9} />
+        </g>
+      ))}
+      {/* North arrow */}
+      <g transform={`translate(${naX},${naY})`}>
+        <line x1={0} y1={14} x2={0} y2={-14} stroke="#1a3a5c" strokeWidth={1.4} />
+        <polygon points="0,-16 -5,-5 5,-5" fill="#1a3a5c" />
+        <polygon points="0,16 -5,5 5,5" fill="none" stroke="#1a3a5c" strokeWidth={1.2} />
+        <text x={0} y={26} textAnchor="middle" fontSize={9} fill="#1a3a5c"
+          fontWeight="700" fontFamily="system-ui,sans-serif">N</text>
+      </g>
+      {/* Alfresco label */}
+      {rooms.filter(r => r.type === 'Alfresco').map(r => (
+        <text key={r.id}
+          x={r.x + r.w / 2} y={r.y + r.h - 10}
+          textAnchor="middle" fontSize={8} fill="#5a8a5a"
+          fontFamily="system-ui,sans-serif" fontStyle="italic">
+          outdoor entertaining
+        </text>
+      ))}
+    </svg>
+  )
 }
 
 function FurnitureLayer({ rooms, zoom, CW, CH }) {
@@ -1389,7 +2281,7 @@ function FurnitureLayer({ rooms, zoom, CW, CH }) {
         if (room.type === 'Corridor') return null
         return getFurniturePaths(room).map((d, i) => (
           <path key={`${room.id}-f${i}`} d={d}
-            stroke="rgba(0,0,0,0.4)" strokeWidth={1} fill="none"
+            stroke="rgba(0,0,0,0.55)" strokeWidth={1.1} fill="none"
             strokeLinecap="round" strokeLinejoin="round" />
         ))
       })}
@@ -1400,22 +2292,32 @@ function FurnitureLayer({ rooms, zoom, CW, CH }) {
 // ─── wall overlay ─────────────────────────────────────────────────────────────
 const TOL = 4
 const DOOR_W = 34
-const WALL_EXT = 11
-const WALL_INT = 7
+const WALL_EXT = 15
+const WALL_INT = 8
 
-function isAdj(room, side, others) {
+function findAdjRoom(room, side, others) {
   const { x, y, w, h } = room
-  return others.some(o => {
+  return others.find(o => {
     if (o.id === room.id) return false
     if (side === 'N') return Math.abs(y - (o.y + o.h)) <= TOL && Math.max(x, o.x) < Math.min(x + w, o.x + o.w) - TOL
     if (side === 'S') return Math.abs((y + h) - o.y) <= TOL && Math.max(x, o.x) < Math.min(x + w, o.x + o.w) - TOL
     if (side === 'W') return Math.abs(x - (o.x + o.w)) <= TOL && Math.max(y, o.y) < Math.min(y + h, o.y + o.h) - TOL
     if (side === 'E') return Math.abs((x + w) - o.x) <= TOL && Math.max(y, o.y) < Math.min(y + h, o.y + o.h) - TOL
     return false
-  })
+  }) ?? null
+}
+
+function isAdj(room, side, others) {
+  return !!findAdjRoom(room, side, others)
 }
 
 function doorSideFor(room, others) {
+  // Foyer always has front door on N wall (faces street)
+  if (room.type === 'Foyer') return 'N'
+  // Alfresco sliding door opens to living area (N wall)
+  if (room.type === 'Alfresco') return 'N'
+  // Ensuite/WIR door faces master bedroom (N wall)
+  if (room.type === 'Ensuite' || room.type === 'Walk-in Robe') return 'N'
   const pref = ['S', 'N', 'E', 'W']
   return pref.find(s => isAdj(room, s, others)) ?? 'S'
 }
@@ -1464,26 +2366,50 @@ function doorArcPath(room, side) {
   return `M ${hx} ${hy} L ${hx - R} ${hy} A ${R} ${R} 0 0 0 ${hx} ${hy + R}`
 }
 
-function WallOverlay({ rooms, zoom, CW, CH }) {
+function WallOverlay({ rooms, openWalls, wallColor, zoom, CW, CH }) {
   if (!rooms.length) return null
+  const wc = wallColor ?? '#1c1c1c'
   const elements = []
   rooms.forEach(room => {
+    const isAlfresco = room.type === 'Alfresco'
     const door = room.type === 'Corridor' ? null : doorSideFor(room, rooms)
-    const walls = ['N', 'S', 'E', 'W'].map(side => {
-      const internal = isAdj(room, side, rooms)
-      const sw = internal ? WALL_INT : WALL_EXT
-      return (
+    ;['N', 'S', 'E', 'W'].forEach(side => {
+      const adjRoom = findAdjRoom(room, side, rooms)
+      const isOpen  = adjRoom && openWalls.has(wallKey(room.id, adjRoom.id))
+      // Sliding door indicator between Alfresco and Living/Dining
+      const isSlidingDoor = isOpen &&
+        ((room.type === 'Alfresco' && (adjRoom?.type === 'Living Room' || adjRoom?.type === 'Dining Room')) ||
+         (adjRoom?.type === 'Alfresco' && (room.type === 'Living Room' || room.type === 'Dining Room')))
+      if (isSlidingDoor && (side === 'N' || side === 'S')) {
+        const { x, y, w, h } = room
+        const wy = side === 'N' ? y : y + h
+        const x1 = Math.max(room.x, adjRoom.x), x2 = Math.min(room.x + room.w, adjRoom.x + adjRoom.w)
+        // Two sliding panel lines side by side
+        const mid = (x1 + x2) / 2
+        elements.push(
+          <line key={`${room.id}-${side}-s1`} x1={x1} y1={wy} x2={mid} y2={wy}
+            stroke="#7ab87a" strokeWidth={4} strokeLinecap="square" />,
+          <line key={`${room.id}-${side}-s2`} x1={mid} y1={wy} x2={x2} y2={wy}
+            stroke="#7ab87a" strokeWidth={4} strokeLinecap="square" strokeDasharray="8 0" opacity={0.5} />
+        )
+        return
+      }
+      if (isOpen) return  // wall removed — open plan
+      const sw = isAlfresco ? 2 : adjRoom ? WALL_INT : WALL_EXT
+      const dashArr = isAlfresco ? '10 6' : undefined
+      elements.push(
         <path key={`${room.id}-${side}`}
           d={wallPath(room, side, door)}
-          stroke="#1c1c1c" strokeWidth={sw} strokeLinecap="square" fill="none" />
+          stroke={isAlfresco ? '#7ab87a' : wc}
+          strokeWidth={sw} strokeLinecap="square" fill="none"
+          strokeDasharray={dashArr} />
       )
     })
-    elements.push(...walls)
     if (door) {
       elements.push(
         <path key={`${room.id}-arc`}
           d={doorArcPath(room, door)}
-          stroke="#1c1c1c" strokeWidth={1.2} strokeLinecap="round" fill="none" />
+          stroke={wc} strokeWidth={1.2} strokeLinecap="round" fill="none" />
       )
     }
   })
@@ -1498,6 +2424,155 @@ function WallOverlay({ rooms, zoom, CW, CH }) {
   )
 }
 
+function WallControlLayer({ rooms, openWalls, onToggleWall, zoom, CW, CH }) {
+  const [hovKey, setHovKey] = useState(null)
+  const [ctxMenu, setCtxMenu] = useState(null)  // { key, x, y } for right-click menu
+
+  // Re-detect all adjacent pairs using 8px tolerance so snap rounding never misses a wall
+  const pairs = useMemo(() => {
+    const DT = 8
+    const result = []
+    for (let i = 0; i < rooms.length; i++) {
+      for (let j = i + 1; j < rooms.length; j++) {
+        const a = rooms[i], b = rooms[j]
+        const key = wallKey(a.id, b.id)
+        if (Math.abs((a.x + a.w) - b.x) <= DT) {
+          const y1 = Math.max(a.y, b.y), y2 = Math.min(a.y + a.h, b.y + b.h)
+          if (y2 - y1 > DT) result.push({ key, axis: 'V', p: a.x + a.w, lo: y1, hi: y2 })
+        } else if (Math.abs((b.x + b.w) - a.x) <= DT) {
+          const y1 = Math.max(a.y, b.y), y2 = Math.min(a.y + a.h, b.y + b.h)
+          if (y2 - y1 > DT) result.push({ key, axis: 'V', p: b.x + b.w, lo: y1, hi: y2 })
+        } else if (Math.abs((a.y + a.h) - b.y) <= DT) {
+          const x1 = Math.max(a.x, b.x), x2 = Math.min(a.x + a.w, b.x + b.w)
+          if (x2 - x1 > DT) result.push({ key, axis: 'H', p: a.y + a.h, lo: x1, hi: x2 })
+        } else if (Math.abs((b.y + b.h) - a.y) <= DT) {
+          const x1 = Math.max(a.x, b.x), x2 = Math.min(a.x + a.w, b.x + b.w)
+          if (x2 - x1 > DT) result.push({ key, axis: 'H', p: b.y + b.h, lo: x1, hi: x2 })
+        }
+      }
+    }
+    return result
+  }, [rooms])
+
+  // Close ctx menu on outside click
+  useEffect(() => {
+    if (!ctxMenu) return
+    const close = () => setCtxMenu(null)
+    window.addEventListener('click', close, { once: true })
+    return () => window.removeEventListener('click', close)
+  }, [ctxMenu])
+
+  if (!pairs.length) return null
+  const HIT = 14  // wider hit area: 28px total band, easy to hover
+
+  return (
+    <>
+      <svg style={{
+        position: 'absolute', top: 0, left: 0, width: CW, height: CH,
+        transform: `scale(${zoom})`, transformOrigin: 'top left',
+        pointerEvents: 'none', zIndex: 18,
+      }}>
+        {pairs.map(p => {
+          const isOpen = openWalls.has(p.key)
+          const isHov  = hovKey === p.key
+          const mid    = (p.lo + p.hi) / 2
+
+          const handleCtx = e => {
+            if (!isOpen) return
+            e.preventDefault()
+            setCtxMenu({ key: p.key, x: e.clientX, y: e.clientY })
+          }
+
+          if (p.axis === 'V') {
+            return (
+              <g key={p.key} style={{ pointerEvents: 'all', cursor: 'pointer' }}
+                onMouseEnter={() => setHovKey(p.key)}
+                onMouseLeave={() => setHovKey(null)}
+                onClick={() => { setCtxMenu(null); onToggleWall(p.key) }}
+                onContextMenu={handleCtx}>
+                {/* Wide invisible hit area */}
+                <rect x={p.p - HIT} y={p.lo} width={HIT * 2} height={p.hi - p.lo} fill="transparent" />
+                {/* Red highlight line on hover (closed wall) */}
+                {isHov && !isOpen && (
+                  <line x1={p.p} y1={p.lo} x2={p.p} y2={p.hi}
+                    stroke="#ef4444" strokeWidth={5} strokeLinecap="square" opacity={0.5} />
+                )}
+                {/* Blue dashed indicator for open walls (always visible) */}
+                {isOpen && (
+                  <line x1={p.p} y1={p.lo} x2={p.p} y2={p.hi}
+                    stroke={isHov ? '#f97316' : 'rgba(99,102,241,0.3)'}
+                    strokeWidth={isHov ? 3 : 2} strokeDasharray="7 5" />
+                )}
+                {/* Icon badge on hover */}
+                {isHov && (
+                  <g style={{ pointerEvents: 'none' }}>
+                    <circle cx={p.p} cy={mid} r={11}
+                      fill={isOpen ? '#f97316' : '#ef4444'}
+                      filter="drop-shadow(0 1px 2px rgba(0,0,0,0.25))" />
+                    {isOpen
+                      ? /* plus = restore */ <path d={`M${p.p-4.5} ${mid} h9 M${p.p} ${mid-4.5} v9`} stroke="white" strokeWidth={1.8} strokeLinecap="round" />
+                      : /* minus = remove */ <path d={`M${p.p-4.5} ${mid} h9`} stroke="white" strokeWidth={2} strokeLinecap="round" />
+                    }
+                  </g>
+                )}
+              </g>
+            )
+          } else {
+            return (
+              <g key={p.key} style={{ pointerEvents: 'all', cursor: 'pointer' }}
+                onMouseEnter={() => setHovKey(p.key)}
+                onMouseLeave={() => setHovKey(null)}
+                onClick={() => { setCtxMenu(null); onToggleWall(p.key) }}
+                onContextMenu={handleCtx}>
+                <rect x={p.lo} y={p.p - HIT} width={p.hi - p.lo} height={HIT * 2} fill="transparent" />
+                {isHov && !isOpen && (
+                  <line x1={p.lo} y1={p.p} x2={p.hi} y2={p.p}
+                    stroke="#ef4444" strokeWidth={5} strokeLinecap="square" opacity={0.5} />
+                )}
+                {isOpen && (
+                  <line x1={p.lo} y1={p.p} x2={p.hi} y2={p.p}
+                    stroke={isHov ? '#f97316' : 'rgba(99,102,241,0.3)'}
+                    strokeWidth={isHov ? 3 : 2} strokeDasharray="7 5" />
+                )}
+                {isHov && (
+                  <g style={{ pointerEvents: 'none' }}>
+                    <circle cx={mid} cy={p.p} r={11}
+                      fill={isOpen ? '#f97316' : '#ef4444'}
+                      filter="drop-shadow(0 1px 2px rgba(0,0,0,0.25))" />
+                    {isOpen
+                      ? <path d={`M${mid-4.5} ${p.p} h9 M${mid} ${p.p-4.5} v9`} stroke="white" strokeWidth={1.8} strokeLinecap="round" />
+                      : <path d={`M${mid-4.5} ${p.p} h9`} stroke="white" strokeWidth={2} strokeLinecap="round" />
+                    }
+                  </g>
+                )}
+              </g>
+            )
+          }
+        })}
+      </svg>
+
+      {/* Right-click context menu to restore wall */}
+      {ctxMenu && (
+        <div style={{ position: 'fixed', left: ctxMenu.x, top: ctxMenu.y, zIndex: 2000 }}
+          onClick={e => e.stopPropagation()}
+          className="bg-white rounded-xl shadow-xl border border-gray-100 py-1 min-w-[150px] overflow-hidden">
+          <button
+            className="w-full text-left px-4 py-2.5 text-[12px] text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
+            onClick={() => { onToggleWall(ctxMenu.key); setCtxMenu(null) }}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6a4 4 0 108 0" stroke="#6b7280" strokeWidth="1.4" strokeLinecap="round"/><path d="M10 2v4H6" stroke="#6b7280" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            Restore wall
+          </button>
+          <button
+            className="w-full text-left px-4 py-2 text-[11px] text-gray-300 hover:bg-gray-50 cursor-pointer"
+            onClick={() => setCtxMenu(null)}>
+            Cancel
+          </button>
+        </div>
+      )}
+    </>
+  )
+}
+
 function DimensionLines({ rooms, zoom, CW, CH }) {
   const valid = rooms.filter(r => r.type !== 'Corridor')
   if (!valid.length) return null
@@ -1507,29 +2582,38 @@ function DimensionLines({ rooms, zoom, CW, CH }) {
   const maxY = Math.max(...valid.map(r => r.y + r.h))
   const W = ((maxX - minX) / MPX).toFixed(1)
   const H = ((maxY - minY) / MPX).toFixed(1)
-  const P = 32
-  const tc = '#888'
+  const off = 28
+  const lc = '#999', tc = '#555'
+  const tickL = 6
   return (
     <svg style={{
       position: 'absolute', top: 0, left: 0, width: CW, height: CH,
       transform: `scale(${zoom})`, transformOrigin: 'top left',
       pointerEvents: 'none', zIndex: 25,
     }}>
-      {/* Width — bottom */}
-      <line x1={minX} y1={maxY + P} x2={maxX} y2={maxY + P} stroke={tc} strokeWidth={1} />
-      <line x1={minX} y1={maxY + P - 5} x2={minX} y2={maxY + P + 5} stroke={tc} strokeWidth={1} />
-      <line x1={maxX} y1={maxY + P - 5} x2={maxX} y2={maxY + P + 5} stroke={tc} strokeWidth={1} />
-      <text x={(minX + maxX) / 2} y={maxY + P + 15} textAnchor="middle"
-        fontSize="11" fill={tc} fontFamily="system-ui,sans-serif" fontWeight="600">{W}m</text>
-      {/* Height — left */}
-      <line x1={minX - P} y1={minY} x2={minX - P} y2={maxY} stroke={tc} strokeWidth={1} />
-      <line x1={minX - P - 5} y1={minY} x2={minX - P + 5} y2={minY} stroke={tc} strokeWidth={1} />
-      <line x1={minX - P - 5} y1={maxY} x2={minX - P + 5} y2={maxY} stroke={tc} strokeWidth={1} />
+      {/* Width — TOP */}
+      <line x1={minX} y1={minY - off} x2={maxX} y2={minY - off} stroke={lc} strokeWidth={1} />
+      <line x1={minX} y1={minY - off - tickL} x2={minX} y2={minY - off + tickL} stroke={lc} strokeWidth={1} />
+      <line x1={maxX} y1={minY - off - tickL} x2={maxX} y2={minY - off + tickL} stroke={lc} strokeWidth={1} />
+      {/* extension lines */}
+      <line x1={minX} y1={minY} x2={minX} y2={minY - off + 2} stroke={lc} strokeWidth={0.5} strokeDasharray="3 3" />
+      <line x1={maxX} y1={minY} x2={maxX} y2={minY - off + 2} stroke={lc} strokeWidth={0.5} strokeDasharray="3 3" />
+      <text x={(minX + maxX) / 2} y={minY - off - 9}
+        textAnchor="middle" fontSize="11" fill={tc}
+        fontFamily="system-ui,sans-serif" fontWeight="600">{W}m</text>
+
+      {/* Height — LEFT */}
+      <line x1={minX - off} y1={minY} x2={minX - off} y2={maxY} stroke={lc} strokeWidth={1} />
+      <line x1={minX - off - tickL} y1={minY} x2={minX - off + tickL} y2={minY} stroke={lc} strokeWidth={1} />
+      <line x1={minX - off - tickL} y1={maxY} x2={minX - off + tickL} y2={maxY} stroke={lc} strokeWidth={1} />
+      {/* extension lines */}
+      <line x1={minX} y1={minY} x2={minX - off + 2} y2={minY} stroke={lc} strokeWidth={0.5} strokeDasharray="3 3" />
+      <line x1={minX} y1={maxY} x2={minX - off + 2} y2={maxY} stroke={lc} strokeWidth={0.5} strokeDasharray="3 3" />
       <text
-        x={minX - P - 18} y={(minY + maxY) / 2}
+        x={minX - off - 16} y={(minY + maxY) / 2}
         textAnchor="middle" fontSize="11" fill={tc}
         fontFamily="system-ui,sans-serif" fontWeight="600"
-        transform={`rotate(-90,${minX - P - 18},${(minY + maxY) / 2})`}
+        transform={`rotate(-90,${minX - off - 16},${(minY + maxY) / 2})`}
       >{H}m</text>
     </svg>
   )

@@ -28,3 +28,10 @@ body {
   background-size: 400px 100%;
   animation: shimmer 1.4s ease-in-out infinite;
 }
+
+@keyframes ai-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(99,102,241,0.55); }
+  50%  { box-shadow: 0 0 0 12px rgba(99,102,241,0); }
+  100% { box-shadow: 0 0 0 0 rgba(99,102,241,0); }
+}
+.ai-highlight { animation: ai-pulse 0.9s ease-out 3; }
