@@ -680,7 +680,7 @@ export default function ProjectPage({ clientOnly = false }) {
   const [builderNotes,  setBuilderNotes]  = useState('')
   const [budgetTier,    setBudgetTier]    = useState('midrange')
   const [rpTab,    setRpTab]    = useState('costs') // 'costs' | 'details'
-  const [saveStatus, setSaveStatus] = useState('idle') // 'idle'|'unsaved'|'saving'|'saved'
+  const [saveStatus, setSaveStatus] = useState('saved') // 'idle'|'unsaved'|'saving'|'saved'
   const [showTemplates, setShowTemplates] = useState(false)
   const [copiedMsg,     setCopiedMsg]     = useState(false)
   // details form
@@ -711,8 +711,9 @@ export default function ProjectPage({ clientOnly = false }) {
   const canvasRef     = useRef(null)
   const dragRef       = useRef(null)
   const zoomRef       = useRef(zoom)
-  const hasLoadedRef  = useRef(false)
-  const saveTimerRef  = useRef(null)
+  const hasLoadedRef    = useRef(false)
+  const saveTimerRef    = useRef(null)
+  const saveInFlightRef = useRef(false)
   const createdRef    = useRef(null)   // tracks ID after first-save of a new project
   const detailFormRef = useRef(detailForm)
   // stable refs for auto-save
@@ -812,6 +813,7 @@ export default function ProjectPage({ clientOnly = false }) {
         if (data.client_finishes) setFinishes(data.client_finishes)
       }
       setLoading(false)
+      setSaveStatus('saved')
       setTimeout(() => { hasLoadedRef.current = true }, 100)
     }
     load()
@@ -819,6 +821,7 @@ export default function ProjectPage({ clientOnly = false }) {
 
   // ── auto-save (debounced 2.5s after any change)
   const saveProject = useCallback(async () => {
+    saveInFlightRef.current = true
     setSaveStatus('saving')
 
     if (isNew) {
@@ -845,10 +848,10 @@ export default function ProjectPage({ clientOnly = false }) {
         setProject(data)
         navigate(`/project/${data.id}`, { replace: true })
         setSaveStatus('saved')
-        setTimeout(() => setSaveStatus('idle'), 2000)
       } else {
         setSaveStatus('unsaved')
       }
+      saveInFlightRef.current = false
       return
     }
 
@@ -869,7 +872,7 @@ export default function ProjectPage({ clientOnly = false }) {
       })
       .eq('id', id)
     setSaveStatus(error ? 'unsaved' : 'saved')
-    if (!error) setTimeout(() => setSaveStatus('idle'), 2000)
+    saveInFlightRef.current = false
   }, [id, isNew, navigate])
 
   const saveNow = useCallback(() => {
@@ -878,10 +881,10 @@ export default function ProjectPage({ clientOnly = false }) {
   }, [saveProject])
 
   useEffect(() => {
-    if (!hasLoadedRef.current) return
+    if (!hasLoadedRef.current || saveInFlightRef.current) return
     setSaveStatus('unsaved')
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    saveTimerRef.current = setTimeout(saveProject, 2500)
+    saveTimerRef.current = setTimeout(saveProject, 3000)
     return () => clearTimeout(saveTimerRef.current)
   }, [rooms, openWalls, wallType, floorType, roofType, margin, gstOn, builderNotes, style, budget, finishes, budgetTier, aiClientMsgs, aiBuilderMsgs, messages, saveProject])
 
@@ -1320,10 +1323,24 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
               </div>
             </div>
             <div className="ml-auto flex items-center gap-2.5">
-              <span className={`text-[10px] font-medium flex items-center gap-1 ${saveStatus==='saved'?'text-emerald-500':saveStatus==='saving'?'text-gray-400':'text-transparent'}`}>
-                {saveStatus==='saved' ? (
-                  <><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2 2 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>Saved</>
-                ) : saveStatus==='saving' ? 'Saving…' : '·'}
+              <span className={`text-[11px] font-semibold flex items-center gap-1 transition-all ${
+                saveStatus === 'unsaved' ? 'text-amber-500' :
+                saveStatus === 'saving'  ? 'text-gray-400'  :
+                saveStatus === 'saved'   ? 'text-emerald-500' : 'opacity-0 pointer-events-none'
+              }`}>
+                {saveStatus === 'unsaved' ? (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-current inline-block" />
+                    Unsaved
+                  </>
+                ) : saveStatus === 'saving' ? 'Saving…' : (
+                  <>
+                    <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                      <path d="M2 5.5l2.5 2.5 4.5-4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Saved
+                  </>
+                )}
               </span>
               <button onClick={() => setAiClientOpen(o => !o)}
                 className={`flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl transition cursor-pointer shadow-sm ${

@@ -22,14 +22,21 @@ export default function App() {
     )
   }
 
-  if (!session) return <AuthPage />
-
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/project/:id" element={<ProjectPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Client link — no auth required */}
+        <Route path="/project/:id/client" element={<ProjectPage clientOnly />} />
+        {/* Builder routes — auth required */}
+        {session ? (
+          <>
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/project/:id" element={<ProjectPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </>
+        ) : (
+          <Route path="*" element={<AuthPage />} />
+        )}
       </Routes>
     </BrowserRouter>
   )
