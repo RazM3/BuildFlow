@@ -71,6 +71,135 @@ const BUDGET_TIERS = [
 const STATUS_OPTS = ['Draft', 'Quote Sent', 'In Progress', 'Completed']
 const AI_MODEL    = 'claude-sonnet-4-6'
 
+// ─── client material catalog ─────────────────────────────────────────────────
+const MAT_PATTERNS = {
+  carpet:   'repeating-linear-gradient(45deg,rgba(0,0,0,.05) 0,rgba(0,0,0,.05) 1px,transparent 0,transparent 7px),repeating-linear-gradient(-45deg,rgba(0,0,0,.05) 0,rgba(0,0,0,.05) 1px,transparent 0,transparent 7px)',
+  timber:   'repeating-linear-gradient(180deg,rgba(0,0,0,.07) 0,rgba(0,0,0,.07) 1px,transparent 0,transparent 11px)',
+  tiles:    'repeating-linear-gradient(90deg,rgba(0,0,0,.09) 0,rgba(0,0,0,.09) 1px,transparent 0,transparent 20px),repeating-linear-gradient(0deg,rgba(0,0,0,.09) 0,rgba(0,0,0,.09) 1px,transparent 0,transparent 20px)',
+  concrete: '',
+  pavers:   'repeating-linear-gradient(90deg,rgba(0,0,0,.08) 0,rgba(0,0,0,.08) 1px,transparent 0,transparent 16px),repeating-linear-gradient(0deg,rgba(0,0,0,.08) 0,rgba(0,0,0,.08) 1px,transparent 0,transparent 10px)',
+}
+const ROOM_MAT_CATALOG = {
+  bedroom: {
+    match: t => ['Master Bedroom','Bedroom','Walk-in Robe'].includes(t),
+    categories: {
+      Flooring: [
+        { id:'carpet',  label:'Carpet',  color:'#d4b896', pattern:'carpet'   },
+        { id:'timber',  label:'Timber',  color:'#c8a46e', pattern:'timber'   },
+        { id:'tiles',   label:'Tiles',   color:'#d8d8d4', pattern:'tiles'    },
+        { id:'vinyl',   label:'Vinyl',   color:'#c8c8c0', pattern:'timber'   },
+      ],
+      Walls: [
+        { id:'painted',   label:'Painted',      color:'#f2f0ec' },
+        { id:'feature',   label:'Feature Wall', color:'#c8b8a8' },
+        { id:'wallpaper', label:'Wallpaper',    color:'#e0d4c4' },
+      ],
+    },
+  },
+  living: {
+    match: t => ['Living Room','Dining Room','Theatre Room','Study','Home Office','Home Gym','Lounge'].includes(t),
+    categories: {
+      Flooring: [
+        { id:'timber',   label:'Timber',           color:'#c8a46e', pattern:'timber'   },
+        { id:'concrete', label:'Polished Concrete', color:'#b8b8b4', pattern:'concrete' },
+        { id:'tiles',    label:'Tiles',             color:'#d8d8d4', pattern:'tiles'    },
+        { id:'vinyl',    label:'Vinyl Plank',       color:'#c8b898', pattern:'timber'   },
+      ],
+      Walls: [
+        { id:'painted', label:'Painted',       color:'#f2f0ec' },
+        { id:'brick',   label:'Exposed Brick', color:'#c4956a' },
+        { id:'feature', label:'Feature Wall',  color:'#c8b8a8' },
+      ],
+    },
+  },
+  kitchen: {
+    match: t => ['Kitchen','Walk-in Pantry'].includes(t),
+    categories: {
+      Benchtop: [
+        { id:'stone',    label:'Stone',    color:'#c8c4c0' },
+        { id:'timber',   label:'Timber',   color:'#c8a46e', pattern:'timber' },
+        { id:'laminate', label:'Laminate', color:'#e8e8e4' },
+      ],
+      Cabinets: [
+        { id:'white',    label:'White',       color:'#f0f0ec' },
+        { id:'charcoal', label:'Charcoal',    color:'#4a4a4a' },
+        { id:'navy',     label:'Navy',        color:'#1a3a5c' },
+        { id:'timber',   label:'Timber Look', color:'#c8a46e' },
+      ],
+      Splashback: [
+        { id:'tiles', label:'Tiles', color:'#e0e0dc', pattern:'tiles'  },
+        { id:'glass', label:'Glass', color:'#d4e8f0' },
+        { id:'stone', label:'Stone', color:'#c8c4c0' },
+      ],
+    },
+  },
+  bathroom: {
+    match: t => ['Bathroom','Ensuite','Laundry'].includes(t),
+    categories: {
+      'Floor Tiles': [
+        { id:'white',  label:'White',       color:'#f5f5f0', pattern:'tiles' },
+        { id:'grey',   label:'Grey',        color:'#a8a8a4', pattern:'tiles' },
+        { id:'black',  label:'Black',       color:'#2a2a2a', pattern:'tiles' },
+        { id:'marble', label:'Marble Look', color:'#e8e4e0', pattern:'tiles' },
+      ],
+      'Wall Tiles': [
+        { id:'white',  label:'White',        color:'#f5f5f0' },
+        { id:'grey',   label:'Grey',         color:'#c8c8c4' },
+        { id:'subway', label:'Subway Tiles', color:'#e8e8e4', pattern:'tiles' },
+        { id:'marble', label:'Marble',       color:'#e8e4e0' },
+      ],
+    },
+  },
+  alfresco: {
+    match: t => ['Alfresco','Pool Deck'].includes(t),
+    categories: {
+      Flooring: [
+        { id:'concrete', label:'Concrete', color:'#c0c0bc', pattern:'concrete' },
+        { id:'decking',  label:'Decking',  color:'#c8a46e', pattern:'timber'   },
+        { id:'pavers',   label:'Pavers',   color:'#b8b0a4', pattern:'pavers'   },
+      ],
+      Style: [
+        { id:'open',     label:'Open',     color:'#86efac' },
+        { id:'roofed',   label:'Roofed',   color:'#6ee7b7' },
+        { id:'enclosed', label:'Enclosed', color:'#34d399' },
+      ],
+    },
+  },
+  other: {
+    match: () => true,
+    categories: {
+      Flooring: [
+        { id:'carpet',   label:'Carpet',   color:'#d4b896', pattern:'carpet'   },
+        { id:'timber',   label:'Timber',   color:'#c8a46e', pattern:'timber'   },
+        { id:'tiles',    label:'Tiles',    color:'#d8d8d4', pattern:'tiles'    },
+        { id:'concrete', label:'Concrete', color:'#b8b8b4', pattern:'concrete' },
+      ],
+    },
+  },
+}
+const getRoomCatalog = type => Object.values(ROOM_MAT_CATALOG).find(c => c.match(type)) ?? ROOM_MAT_CATALOG.other
+const getMatOption = (type, cat, id) => getRoomCatalog(type).categories[cat]?.find(o => o.id === id)
+const getMatBgStyle = (type, mats) => {
+  if (!mats) return {}
+  const cat  = getRoomCatalog(type)
+  // primary visual = first category that has a selection with a color
+  const primaryCat = Object.keys(cat.categories)[0]
+  const sel = mats[primaryCat]
+  if (!sel) return {}
+  const opt = cat.categories[primaryCat]?.find(o => o.id === sel)
+  if (!opt) return {}
+  const bg = opt.pattern ? `${MAT_PATTERNS[opt.pattern]},` : ''
+  return { background: `${bg}${opt.color}` }
+}
+const getRoomSelectionSummary = (rooms) =>
+  rooms.filter(r => r.clientMaterials && Object.keys(r.clientMaterials).length > 0)
+    .map(r => {
+      const entries = Object.entries(r.clientMaterials)
+        .map(([cat, id]) => getMatOption(r.type, cat, id)?.label)
+        .filter(Boolean)
+      return entries.length ? { name: r.type, choices: entries.join(', ') } : null
+    }).filter(Boolean)
+
 // ─── smart generator constants ────────────────────────────────────────────────
 const EXTRA_ROOMS = ['Study', 'Theatre Room', 'Home Gym', 'Walk-in Pantry', 'Mudroom', 'Pool Deck', 'Alfresco', 'Workshop', 'Home Office']
 
@@ -1334,6 +1463,7 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                     roomCost={roomCostFull(r)}
                     floorMat={r.floorMat || floorType}
                     onFloorChange={mat => updRoom(r.id, { floorMat: mat })}
+                    clientMaterials={r.clientMaterials}
                     onMouseDown={e => onRoomDown(e, r.id)}
                     onHandleDown={(e, dir) => onHandleDown(e, r.id, dir)}
                   />
@@ -1415,15 +1545,33 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                 )}
               </>
             ) : (
-              <ClientPanel
-                clientOnly={clientOnly}
-                onOpenAI={() => setAiClientOpen(true)}
-                style={style} setStyle={setStyle}
-                budgetTier={budgetTier} setBudgetTier={setBudgetTier}
-                finishes={finishes} setFinishes={setFinishes}
-                msgText={msgText} setMsgText={setMsgText}
-                messages={messages} onSend={sendMessage}
-              />
+              (() => {
+                const isClientMode = clientOnly || view === 'client'
+                const selRoom = rooms.find(r => r.id === selId)
+                if (isClientMode && selRoom) {
+                  return (
+                    <RoomMaterialsPanel
+                      room={selRoom}
+                      onBack={() => setSelId(null)}
+                      onMaterialChange={(roomId, cat, optId) =>
+                        updRoom(roomId, { clientMaterials: { ...(rooms.find(r => r.id === roomId)?.clientMaterials ?? {}), [cat]: optId } })
+                      }
+                    />
+                  )
+                }
+                return (
+                  <ClientPanel
+                    clientOnly={clientOnly}
+                    onOpenAI={() => setAiClientOpen(true)}
+                    rooms={rooms}
+                    style={style} setStyle={setStyle}
+                    budgetTier={budgetTier} setBudgetTier={setBudgetTier}
+                    finishes={finishes} setFinishes={setFinishes}
+                    msgText={msgText} setMsgText={setMsgText}
+                    messages={messages} onSend={sendMessage}
+                  />
+                )
+              })()
             )}
           </div>
         )}
@@ -1604,6 +1752,25 @@ function BuilderPanel({
         </button>
       </div>
 
+      {/* Client material preferences */}
+      {(() => {
+        const summary = getRoomSelectionSummary(rooms ?? [])
+        if (!summary.length) return null
+        return (
+          <div className="px-4 py-3 border-b border-gray-50">
+            <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-2">Client Preferences</p>
+            <div className="space-y-1.5">
+              {summary.map((s, i) => (
+                <div key={i} className="bg-blue-50 rounded-xl px-3 py-2">
+                  <p className="text-[10px] font-bold text-[#1a3a5c]">{s.name}</p>
+                  <p className="text-[10px] text-gray-500 mt-0.5">{s.choices}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Client comments */}
       <div className="px-4 py-3 flex-1">
         <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-2">Client Comments</p>
@@ -1623,6 +1790,72 @@ function BuilderPanel({
   )
 }
 
+// ─── room materials panel (client) ────────────────────────────────────────────
+function RoomMaterialsPanel({ room, onBack, onMaterialChange }) {
+  const catalog = getRoomCatalog(room.type)
+  const mats = room.clientMaterials ?? {}
+
+  const Swatch = ({ cat, opt }) => {
+    const active = mats[cat] === opt.id
+    return (
+      <button onClick={() => onMaterialChange(room.id, cat, opt.id)}
+        className={`flex flex-col items-center gap-1 p-1.5 rounded-xl border-2 transition cursor-pointer relative ${
+          active ? 'border-[#1a3a5c] shadow-sm' : 'border-gray-100 hover:border-gray-300 bg-white'
+        }`}>
+        <div className="w-full rounded-lg overflow-hidden" style={{ height: 36 }}>
+          <div className="w-full h-full" style={{
+            background: opt.pattern
+              ? `${MAT_PATTERNS[opt.pattern]},${opt.color}`
+              : opt.color,
+          }} />
+        </div>
+        <span className={`text-[9px] font-semibold leading-tight text-center ${active ? 'text-[#1a3a5c]' : 'text-gray-500'}`}>{opt.label}</span>
+        {active && (
+          <div className="absolute top-1 right-1 w-4 h-4 bg-[#1a3a5c] rounded-full flex items-center justify-center">
+            <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4l2 2 3-3" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </div>
+        )}
+      </button>
+    )
+  }
+
+  return (
+    <div className="flex flex-col h-full overflow-y-auto">
+      {/* Header */}
+      <div className="px-4 pt-4 pb-3 border-b border-gray-100 flex items-center gap-2.5">
+        <button onClick={onBack}
+          className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition cursor-pointer shrink-0">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8 2L4 6l4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </button>
+        <div>
+          <p className="font-bold text-[#1a3a5c] text-sm leading-none">{room.type}</p>
+          <p className="text-[10px] text-gray-400 mt-0.5">Pick your finishes</p>
+        </div>
+      </div>
+
+      {/* Category sections */}
+      <div className="flex-1 overflow-y-auto">
+        {Object.entries(catalog.categories).map(([cat, opts]) => (
+          <div key={cat} className="px-4 py-3.5 border-b border-gray-50">
+            <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-2.5">{cat}</p>
+            <div className="grid grid-cols-3 gap-1.5">
+              {opts.map(opt => <Swatch key={opt.id} cat={cat} opt={opt} />)}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Done button */}
+      <div className="px-4 py-4">
+        <button onClick={onBack}
+          className="w-full py-3 rounded-2xl text-[12px] font-bold text-white bg-gradient-to-r from-[#1a3a5c] to-[#2d6a9f] hover:from-[#243f63] hover:to-[#3a7ab5] transition cursor-pointer shadow-sm">
+          Done
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── client panel ─────────────────────────────────────────────────────────────
 const CLIENT_BUDGET_TIERS = [
   { id: 'lean',    label: 'Keep it lean',  icon: '🌿', desc: 'Smart choices, great result' },
@@ -1630,7 +1863,7 @@ const CLIENT_BUDGET_TIERS = [
   { id: 'premium', label: 'Go premium',    icon: '🏆', desc: 'Best of everything' },
 ]
 
-function ClientPanel({ clientOnly, onOpenAI, style, setStyle, budgetTier, setBudgetTier, finishes, setFinishes, msgText, setMsgText, messages, onSend }) {
+function ClientPanel({ clientOnly, onOpenAI, rooms, style, setStyle, budgetTier, setBudgetTier, finishes, setFinishes, msgText, setMsgText, messages, onSend }) {
   const theme = STYLE_THEMES[style] ?? STYLE_THEMES.Modern
   return (
     <div className="flex flex-col h-full overflow-y-auto">
@@ -1738,6 +1971,27 @@ function ClientPanel({ clientOnly, onOpenAI, style, setStyle, budgetTier, setBud
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 6h10M6.5 1.5L11 6l-4.5 4.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </button>
           </div>
+
+          {/* Your Selections So Far */}
+          {clientOnly && (() => {
+            const summary = getRoomSelectionSummary(rooms ?? [])
+            return summary.length > 0 ? (
+              <div className="mb-3 bg-[#1a3a5c]/4 rounded-2xl px-3 py-3">
+                <p className="text-[9px] uppercase tracking-widest text-[#1a3a5c]/50 font-semibold mb-2">Your selections so far</p>
+                <div className="space-y-1.5">
+                  {summary.map((s, i) => (
+                    <div key={i} className="flex items-start gap-1.5">
+                      <div className="w-1.5 h-1.5 bg-[#1a3a5c]/30 rounded-full mt-1 shrink-0" />
+                      <div>
+                        <span className="text-[10px] font-bold text-[#1a3a5c]">{s.name}</span>
+                        <span className="text-[10px] text-gray-400"> — {s.choices}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null
+          })()}
 
           {/* Submit Design — client only */}
           {clientOnly && (
@@ -1999,22 +2253,26 @@ const HPOS = {
 }
 const HCURSOR = { nw: 'nw-resize', n: 'n-resize', ne: 'ne-resize', e: 'e-resize', se: 'se-resize', s: 's-resize', sw: 'sw-resize', w: 'w-resize' }
 
-function RoomBlock({ room, selected, view, clientStyle, cost, highlighted, builderMode, roomCost, floorMat, onFloorChange, onMouseDown, onHandleDown }) {
+function RoomBlock({ room, selected, view, clientStyle, cost, highlighted, builderMode, roomCost, floorMat, onFloorChange, clientMaterials, onMouseDown, onHandleDown }) {
   const [catalogOpen, setCatalogOpen] = useState(false)
   const isCorridor = room.type === 'Corridor'
   const theme = STYLE_THEMES[clientStyle] ?? null
   const isClientView = view === 'client' || !builderMode
-  const fillColor = (isClientView && theme) ? theme.fill : '#fff'
+  const themeColor = (isClientView && theme) ? theme.fill : '#fff'
+  const matStyle = isClientView ? getMatBgStyle(room.type, clientMaterials) : {}
+  const fillColor = matStyle.background ? undefined : themeColor
   const textColor = (isClientView && theme) ? theme.wall : '#1c1c1c'
+  const isClientSelected = isClientView && selected
   return (
     <div onMouseDown={onMouseDown}
       className={highlighted ? 'ai-highlight' : undefined}
       style={{
         position: 'absolute', left: room.x, top: room.y, width: room.w, height: room.h,
-        background: fillColor,
-        border: selected ? `2px solid ${textColor}59` : 'none',
+        background: matStyle.background ?? fillColor,
+        border: selected ? `2px solid ${isClientSelected ? '#1a3a5c' : textColor}` : 'none',
         cursor: 'move', zIndex: selected ? 10 : 1,
-        boxShadow: selected ? `0 0 0 3px ${textColor}1a` : 'none',
+        boxShadow: isClientSelected ? '0 0 0 4px rgba(26,58,92,0.15), 0 0 0 2px rgba(26,58,92,0.4)' : selected ? `0 0 0 3px ${textColor}1a` : 'none',
+        transition: 'background 0.3s ease',
       }}>
       <div className="absolute inset-0 flex flex-col items-center justify-center px-2 pointer-events-none">
         <span className="font-bold tracking-wider leading-tight text-center"
