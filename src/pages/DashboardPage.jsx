@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 const STATUS_META = {
-  'In Progress': { dot: 'bg-amber-400',   pill: 'bg-amber-50 text-amber-700 border-amber-100' },
-  'Quote Sent':  { dot: 'bg-blue-400',    pill: 'bg-blue-50 text-blue-700 border-blue-100' },
-  'Completed':   { dot: 'bg-emerald-400', pill: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
-  'Draft':       { dot: 'bg-gray-300',    pill: 'bg-gray-50 text-gray-500 border-gray-100' },
+  'In Progress': { dot: 'bg-amber-400',   pill: { background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.25)', color: '#fbbf24' } },
+  'Quote Sent':  { dot: 'bg-blue-400',    pill: { background: 'rgba(79,142,247,0.12)',  border: '1px solid rgba(79,142,247,0.25)',  color: '#4f8ef7' } },
+  'Completed':   { dot: 'bg-emerald-400', pill: { background: 'rgba(31,216,164,0.12)',  border: '1px solid rgba(31,216,164,0.25)',  color: '#1fd8a4' } },
+  'Draft':       { dot: 'bg-gray-400',    pill: { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.45)' } },
 }
 
 export default function DashboardPage() {
@@ -45,9 +45,10 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f6f8]">
+    <div className="min-h-screen" style={{ background: 'var(--bg-primary)', fontFamily: "'Inter', system-ui, sans-serif" }}>
       {/* Nav */}
-      <nav className="bg-white border-b border-gray-100 px-8 h-14 flex items-center justify-between sticky top-0 z-10">
+      <nav className="px-8 h-14 flex items-center justify-between sticky top-0 z-10"
+        style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-8">
           <LogoMark />
           <div className="hidden md:flex items-center gap-1">
@@ -58,13 +59,20 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <button className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition cursor-pointer">
+          <button className="w-8 h-8 flex items-center justify-center rounded-lg transition cursor-pointer"
+            style={{ color: 'rgba(255,255,255,0.4)' }}
+            onMouseEnter={e => { e.currentTarget.style.background='rgba(255,255,255,0.06)'; e.currentTarget.style.color='rgba(255,255,255,0.8)' }}
+            onMouseLeave={e => { e.currentTarget.style.background=''; e.currentTarget.style.color='rgba(255,255,255,0.4)' }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5"/><path d="M11 11l2.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
-          <div className="w-7 h-7 rounded-full bg-[#0a1628] flex items-center justify-center text-white text-xs font-bold cursor-pointer">
+          <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold cursor-pointer"
+            style={{ background: 'var(--accent-blue)' }}>
             {firstName.charAt(0).toUpperCase()}
           </div>
-          <button onClick={handleSignOut} className="text-xs text-gray-400 hover:text-gray-600 transition cursor-pointer">
+          <button onClick={handleSignOut} className="text-xs transition cursor-pointer"
+            style={{ color: 'rgba(255,255,255,0.4)' }}
+            onMouseEnter={e => e.currentTarget.style.color='rgba(255,255,255,0.7)'}
+            onMouseLeave={e => e.currentTarget.style.color='rgba(255,255,255,0.4)'}>
             Sign out
           </button>
         </div>
@@ -74,14 +82,15 @@ export default function DashboardPage() {
         {/* Header */}
         <div className="flex items-start justify-between mb-8 flex-wrap gap-4 fade-up">
           <div>
-            <h1 className="text-[#0a1628] text-2xl font-bold tracking-tight mb-0.5">
+            <h1 className="text-2xl font-medium mb-0.5" style={{ color: 'var(--text-primary)', letterSpacing: '0.02em' }}>
               Good morning, {firstName}
             </h1>
-            <p className="text-gray-400 text-sm">Here's your project overview for today.</p>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Here's your project overview for today.</p>
           </div>
           <button
             onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 bg-[#0a1628] hover:bg-[#152238] text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition shadow-[0_4px_20px_rgba(10,22,40,0.2)] cursor-pointer"
+            className="btn-glow flex items-center gap-2 text-white text-sm font-semibold px-4 py-2.5 rounded-xl cursor-pointer"
+            style={{ background: 'var(--accent-blue)', boxShadow: '0 4px 20px rgba(79,142,247,0.3)' }}
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
             New Project
@@ -91,31 +100,42 @@ export default function DashboardPage() {
         {/* Stat cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
-            { label: 'Total Projects',  value: counts.total,      icon: <GridIcon />,  accent: 'bg-slate-100 text-slate-500',   delay: '0ms'   },
-            { label: 'In Progress',     value: counts.inProgress, icon: <ClockIcon />, accent: 'bg-amber-50 text-amber-500',    delay: '50ms'  },
-            { label: 'Quotes Out',      value: counts.quoteSent,  icon: <DocIcon />,   accent: 'bg-blue-50 text-blue-500',      delay: '100ms' },
-            { label: 'Completed',       value: counts.completed,  icon: <CheckIcon />, accent: 'bg-emerald-50 text-emerald-500',delay: '150ms' },
+            { label: 'Total Projects',  value: counts.total,      icon: <GridIcon />,  accentBg: 'rgba(79,142,247,0.1)',    accentColor: '#4f8ef7',  delay: '0ms'   },
+            { label: 'In Progress',     value: counts.inProgress, icon: <ClockIcon />, accentBg: 'rgba(251,191,36,0.1)',    accentColor: '#fbbf24',  delay: '50ms'  },
+            { label: 'Quotes Out',      value: counts.quoteSent,  icon: <DocIcon />,   accentBg: 'rgba(108,99,255,0.1)',    accentColor: '#6c63ff',  delay: '100ms' },
+            { label: 'Completed',       value: counts.completed,  icon: <CheckIcon />, accentBg: 'rgba(31,216,164,0.1)',    accentColor: '#1fd8a4',  delay: '150ms' },
           ].map(s => (
             <div
               key={s.label}
-              className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_16px_rgba(0,0,0,0.04)] px-5 py-4 fade-up"
-              style={{ animationDelay: s.delay }}
+              className="rounded-2xl px-5 py-4 fade-up"
+              style={{
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border)',
+                animationDelay: s.delay,
+              }}
             >
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-3 ${s.accent}`}>{s.icon}</div>
-              <div className="text-[#0a1628] text-2xl font-bold tracking-tight">{s.value}</div>
-              <div className="text-gray-400 text-xs mt-0.5">{s.label}</div>
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-3"
+                style={{ background: s.accentBg, color: s.accentColor }}>
+                {s.icon}
+              </div>
+              <div className="text-2xl font-bold tracking-tight tabular-nums" style={{ color: 'var(--text-primary)' }}>{s.value}</div>
+              <div className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{s.label}</div>
             </div>
           ))}
         </div>
 
         {/* Projects table */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_24px_rgba(0,0,0,0.05)] overflow-hidden fade-up" style={{ animationDelay: '200ms' }}>
-          <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
+        <div className="rounded-2xl overflow-hidden fade-up" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', animationDelay: '200ms' }}>
+          <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
             <div className="flex items-center gap-3">
-              <h2 className="text-[#0a1628] font-semibold text-sm">All Projects</h2>
-              <span className="bg-gray-100 text-gray-500 text-xs font-medium px-2 py-0.5 rounded-full">{projects.length}</span>
+              <h2 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>All Projects</h2>
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full"
+                style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)' }}>{projects.length}</span>
             </div>
-            <button className="text-xs text-gray-400 hover:text-gray-600 border border-gray-100 rounded-lg px-3 py-1.5 transition cursor-pointer flex items-center gap-1.5">
+            <button className="text-xs border rounded-lg px-3 py-1.5 transition cursor-pointer flex items-center gap-1.5"
+              style={{ color: 'rgba(255,255,255,0.4)', borderColor: 'var(--border)' }}
+              onMouseEnter={e => { e.currentTarget.style.color='rgba(255,255,255,0.7)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.2)' }}
+              onMouseLeave={e => { e.currentTarget.style.color='rgba(255,255,255,0.4)'; e.currentTarget.style.borderColor='var(--border)' }}>
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 3h10M3 6h6M5 9h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
               Filter
             </button>
@@ -123,7 +143,7 @@ export default function DashboardPage() {
 
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-gray-400 text-xs uppercase tracking-wider border-b border-gray-50">
+              <tr className="text-xs uppercase tracking-wider" style={{ borderBottom: '1px solid var(--border)', color: 'rgba(255,255,255,0.4)' }}>
                 <th className="text-left px-6 py-3 font-medium">Client</th>
                 <th className="text-left px-6 py-3 font-medium hidden md:table-cell">Address</th>
                 <th className="text-left px-6 py-3 font-medium">Status</th>
@@ -135,7 +155,7 @@ export default function DashboardPage() {
               {loading ? (
                 <>
                   {[1, 2, 3].map(i => (
-                    <tr key={i} className="border-b border-gray-50">
+                    <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td className="px-6 py-4"><div className="h-3 rounded skeleton w-40" /></td>
                       <td className="px-6 py-4 hidden md:table-cell"><div className="h-3 rounded skeleton w-56" /></td>
                       <td className="px-6 py-4"><div className="h-5 rounded-full skeleton w-20" /></td>
@@ -148,11 +168,12 @@ export default function DashboardPage() {
                 <tr>
                   <td colSpan={5}>
                     <div className="px-6 py-20 text-center">
-                      <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="8" width="16" height="11" rx="1.5" stroke="#9ca3af" strokeWidth="1.5"/><rect x="7" y="5" width="8" height="5" rx="1" stroke="#9ca3af" strokeWidth="1.5"/></svg>
+                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                        style={{ background: 'rgba(255,255,255,0.05)' }}>
+                        <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="8" width="16" height="11" rx="1.5" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5"/><rect x="7" y="5" width="8" height="5" rx="1" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5"/></svg>
                       </div>
-                      <p className="text-gray-400 text-sm font-medium">No projects yet</p>
-                      <p className="text-gray-300 text-xs mt-1">Create your first project to get started</p>
+                      <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.4)' }}>No projects yet</p>
+                      <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.2)' }}>Create your first project to get started</p>
                     </div>
                   </td>
                 </tr>
@@ -160,21 +181,25 @@ export default function DashboardPage() {
                 projects.map((p, i) => (
                   <tr
                     key={p.id}
-                    className={`group transition-colors hover:bg-[#f8f9ff] cursor-pointer ${i !== projects.length - 1 ? 'border-b border-gray-50' : ''}`}
+                    className="group cursor-pointer"
+                    style={{ borderBottom: i !== projects.length - 1 ? '1px solid var(--border)' : 'none', transition: 'background 150ms' }}
+                    onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.03)'}
+                    onMouseLeave={e => e.currentTarget.style.background=''}
                     onClick={() => navigate(`/project/${p.id}`)}
                   >
                     <td className="px-6 py-4">
-                      <span className="font-semibold text-[#0a1628] text-sm">{p.client_name}</span>
+                      <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{p.client_name}</span>
                     </td>
-                    <td className="px-6 py-4 text-gray-400 text-sm hidden md:table-cell">{p.address}</td>
+                    <td className="px-6 py-4 text-sm hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>{p.address}</td>
                     <td className="px-6 py-4">
                       <StatusBadge status={p.status} />
                     </td>
-                    <td className="px-6 py-4 text-gray-400 text-xs hidden sm:table-cell">
+                    <td className="px-6 py-4 text-xs hidden sm:table-cell" style={{ color: 'var(--text-tertiary)' }}>
                       {p.updated_at ? new Date(p.updated_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : '—'}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <span className="opacity-0 group-hover:opacity-100 text-[#0a1628] text-xs font-semibold transition-opacity">
+                      <span className="opacity-0 group-hover:opacity-100 text-xs font-semibold transition-opacity"
+                        style={{ color: 'var(--accent-blue)' }}>
                         Open →
                       </span>
                     </td>
@@ -185,8 +210,8 @@ export default function DashboardPage() {
           </table>
 
           {!loading && projects.length > 0 && (
-            <div className="px-6 py-3 border-t border-gray-50 flex items-center justify-between">
-              <span className="text-gray-300 text-xs">Showing {projects.length} project{projects.length !== 1 ? 's' : ''}</span>
+            <div className="px-6 py-3 flex items-center justify-between" style={{ borderTop: '1px solid var(--border)' }}>
+              <span className="text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>Showing {projects.length} project{projects.length !== 1 ? 's' : ''}</span>
             </div>
           )}
         </div>
@@ -196,7 +221,6 @@ export default function DashboardPage() {
         <CreateProjectModal
           onClose={() => setShowCreate(false)}
           onCreate={async (fields) => {
-            // Try Supabase — navigate to workspace regardless (works before schema is set up too)
             const { data } = await supabase
               .from('projects')
               .insert({ ...fields, floor_plan: [] })
@@ -208,7 +232,8 @@ export default function DashboardPage() {
         />
       )}
 
-      <div className="fixed bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#f5f6f8] to-transparent pointer-events-none" />
+      <div className="fixed bottom-0 left-0 right-0 h-24 pointer-events-none"
+        style={{ background: 'linear-gradient(to top, var(--bg-primary), transparent)' }} />
     </div>
   )
 }
@@ -230,42 +255,50 @@ function CreateProjectModal({ onClose, onCreate }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-6"
-      style={{ background: 'rgba(10,22,40,0.5)', backdropFilter: 'blur(4px)' }}
+      style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md modal-enter">
-        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+      <div className="rounded-2xl shadow-2xl w-full max-w-md modal-enter"
+        style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+        <div className="px-6 py-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
           <div>
-            <h2 className="text-[#0a1628] font-bold text-base">New Project</h2>
-            <p className="text-gray-400 text-xs mt-0.5">Enter the client details to get started</p>
+            <h2 className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>New Project</h2>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>Enter the client details to get started</p>
           </div>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 transition cursor-pointer">
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg transition cursor-pointer"
+            style={{ color: 'rgba(255,255,255,0.4)' }}
+            onMouseEnter={e => { e.currentTarget.style.background='rgba(255,255,255,0.08)'; e.currentTarget.style.color='rgba(255,255,255,0.8)' }}
+            onMouseLeave={e => { e.currentTarget.style.background=''; e.currentTarget.style.color='rgba(255,255,255,0.4)' }}>
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 2l9 9M11 2l-9 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
           </button>
         </div>
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">Client Name *</label>
+            <label className="block text-[10px] font-semibold uppercase tracking-widest"
+              style={{ color: 'rgba(255,255,255,0.4)' }}>Client Name *</label>
             <input
               type="text" value={clientName} onChange={e => setClientName(e.target.value)}
               required placeholder="e.g. Sarah & Mike Thornton"
               autoFocus
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 bg-gray-50 outline-none placeholder:text-gray-300 focus:bg-white focus:ring-2 focus:ring-[#0a1628]/10 focus:border-[#0a1628]/30 transition-all"
+              className="input-dark w-full rounded-xl px-4 py-3 text-sm"
             />
           </div>
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">Address</label>
+            <label className="block text-[10px] font-semibold uppercase tracking-widest"
+              style={{ color: 'rgba(255,255,255,0.4)' }}>Address</label>
             <input
               type="text" value={address} onChange={e => setAddress(e.target.value)}
               placeholder="e.g. 14 Riverview Rd, Claremont WA 6010"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 bg-gray-50 outline-none placeholder:text-gray-300 focus:bg-white focus:ring-2 focus:ring-[#0a1628]/10 focus:border-[#0a1628]/30 transition-all"
+              className="input-dark w-full rounded-xl px-4 py-3 text-sm"
             />
           </div>
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</label>
+            <label className="block text-[10px] font-semibold uppercase tracking-widest"
+              style={{ color: 'rgba(255,255,255,0.4)' }}>Status</label>
             <select
               value={status} onChange={e => setStatus(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 bg-gray-50 outline-none cursor-pointer focus:ring-2 focus:ring-[#0a1628]/10 focus:border-[#0a1628]/30 transition-all"
+              className="input-dark w-full rounded-xl px-4 py-3 text-sm cursor-pointer"
+              style={{ appearance: 'auto' }}
             >
               <option>Draft</option>
               <option>Quote Sent</option>
@@ -275,7 +308,8 @@ function CreateProjectModal({ onClose, onCreate }) {
           </div>
           <button
             type="submit" disabled={saving || !clientName.trim()}
-            className="w-full bg-[#0a1628] hover:bg-[#152238] text-white font-semibold py-3 rounded-xl transition disabled:opacity-50 cursor-pointer text-sm shadow-[0_4px_20px_rgba(10,22,40,0.2)] mt-2"
+            className="btn-glow w-full text-white font-semibold py-3 rounded-xl cursor-pointer text-sm mt-2 disabled:opacity-50"
+            style={{ background: 'var(--accent-blue)', boxShadow: '0 4px 20px rgba(79,142,247,0.25)' }}
           >
             {saving ? 'Creating…' : 'Create Project'}
           </button>
@@ -288,7 +322,8 @@ function CreateProjectModal({ onClose, onCreate }) {
 function StatusBadge({ status }) {
   const meta = STATUS_META[status] ?? STATUS_META['Draft']
   return (
-    <span className={`inline-flex items-center gap-1.5 border text-xs font-medium px-2.5 py-1 rounded-full ${meta.pill}`}>
+    <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full"
+      style={meta.pill}>
       <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
       {status}
     </span>
@@ -297,9 +332,12 @@ function StatusBadge({ status }) {
 
 function NavLink({ children, active }) {
   return (
-    <button className={`px-3 py-1.5 rounded-lg text-sm font-medium transition cursor-pointer ${
-      active ? 'text-[#0a1628] bg-gray-100' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-    }`}>
+    <button className={`px-3 py-1.5 rounded-lg text-sm font-medium transition cursor-pointer`}
+      style={active
+        ? { color: 'var(--text-primary)', background: 'rgba(255,255,255,0.08)' }
+        : { color: 'rgba(255,255,255,0.4)' }}
+      onMouseEnter={e => { if (!active) { e.currentTarget.style.color='rgba(255,255,255,0.7)'; e.currentTarget.style.background='rgba(255,255,255,0.05)' } }}
+      onMouseLeave={e => { if (!active) { e.currentTarget.style.color='rgba(255,255,255,0.4)'; e.currentTarget.style.background='' } }}>
       {children}
     </button>
   )
@@ -308,16 +346,17 @@ function NavLink({ children, active }) {
 function LogoMark() {
   return (
     <div className="flex items-center gap-2">
-      <div className="w-7 h-7 bg-[#0a1628] rounded-lg flex items-center justify-center">
+      <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+        style={{ background: 'var(--accent-blue)' }}>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
           <rect x="2" y="6" width="10" height="6" rx="1" fill="white" fillOpacity="0.9"/>
           <rect x="3.5" y="3.5" width="7" height="3.5" rx="0.75" fill="white" fillOpacity="0.7"/>
-          <rect x="2.5" y="8.5" width="2.5" height="2.5" rx="0.4" fill="#0a1628"/>
-          <rect x="9" y="8.5" width="2.5" height="2.5" rx="0.4" fill="#0a1628"/>
-          <rect x="5.75" y="8.5" width="2.5" height="3.5" rx="0.4" fill="#0a1628"/>
+          <rect x="2.5" y="8.5" width="2.5" height="2.5" rx="0.4" fill="#4f8ef7"/>
+          <rect x="9" y="8.5" width="2.5" height="2.5" rx="0.4" fill="#4f8ef7"/>
+          <rect x="5.75" y="8.5" width="2.5" height="3.5" rx="0.4" fill="#4f8ef7"/>
         </svg>
       </div>
-      <span className="text-[#0a1628] font-bold text-sm tracking-tight">BuildFlow Pro</span>
+      <span className="font-bold text-sm tracking-tight" style={{ color: 'var(--text-primary)' }}>BuildFlow Pro</span>
     </div>
   )
 }

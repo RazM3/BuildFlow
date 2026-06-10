@@ -33,164 +33,202 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex" style={{ background: 'var(--bg-primary)', fontFamily: "'Inter', system-ui, sans-serif" }}>
       {/* Left panel */}
-      <div className="hidden lg:flex lg:w-1/2 bg-[#0a1628] flex-col justify-between p-12 relative overflow-hidden">
-        {/* Subtle grid pattern */}
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative overflow-hidden"
+        style={{ background: 'var(--bg-secondary)' }}>
+        {/* Dot grid pattern */}
         <div
-          className="absolute inset-0 opacity-[0.04]"
+          className="absolute inset-0"
           style={{
-            backgroundImage: `linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)`,
-            backgroundSize: '40px 40px',
+            backgroundImage: `radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)`,
+            backgroundSize: '10px 10px',
           }}
         />
-        {/* Glow */}
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl" />
+        {/* Large blurred gradient orb */}
+        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(79,142,247,0.18) 0%, transparent 70%)', filter: 'blur(40px)' }} />
+        <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(108,99,255,0.12) 0%, transparent 70%)', filter: 'blur(40px)' }} />
 
         <div className="relative">
           <LogoMark />
         </div>
 
         <div className="relative space-y-6">
-          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 rounded-full px-4 py-1.5">
-            <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-            <span className="text-white/70 text-xs font-medium tracking-wide">Built for Australian Builders</span>
+          <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--success)' }} />
+            <span className="text-xs font-medium tracking-wide" style={{ color: 'rgba(255,255,255,0.7)' }}>Built for Australian Builders</span>
           </div>
-          <h2 className="text-white text-4xl font-bold leading-tight tracking-tight">
+          <h2 className="text-4xl font-medium leading-tight" style={{ color: 'var(--text-primary)', letterSpacing: '0.02em' }}>
             Manage every project.<br />
-            <span className="text-blue-400">Close every job.</span>
+            <span style={{ color: 'var(--accent-blue)' }}>Close every job.</span>
           </h2>
-          <p className="text-white/40 text-sm leading-relaxed max-w-sm">
+          <p className="text-sm leading-relaxed max-w-sm" style={{ color: 'var(--text-secondary)' }}>
             Quotes, timelines, and client updates — all in one place. Designed for the way you work.
           </p>
         </div>
 
         <div className="relative flex items-center gap-6">
           <Stat value="2,400+" label="Projects managed" />
-          <div className="w-px h-8 bg-white/10" />
+          <div className="w-px h-8" style={{ background: 'var(--border)' }} />
           <Stat value="98%" label="Builder satisfaction" />
-          <div className="w-px h-8 bg-white/10" />
+          <div className="w-px h-8" style={{ background: 'var(--border)' }} />
           <Stat value="$0 setup" label="Get started free" />
         </div>
       </div>
 
-      {/* Right panel */}
-      <div className="flex-1 flex items-center justify-center bg-white px-6 py-12">
-        <div className="w-full max-w-sm">
+      {/* Right panel — glass card centred */}
+      <div className="flex-1 flex items-center justify-center px-6 py-12 relative overflow-hidden"
+        style={{ background: 'var(--bg-canvas)' }}>
+        {/* Subtle dot grid */}
+        <div className="absolute inset-0 pointer-events-none"
+          style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)', backgroundSize: '10px 10px' }} />
+
+        <div className="w-full max-w-sm relative">
           {/* Mobile logo */}
           <div className="lg:hidden mb-10 flex justify-center">
             <LogoMark />
           </div>
 
-          <div className="mb-8">
-            <h1 className="text-[#0a1628] text-2xl font-bold tracking-tight mb-1">
-              {mode === 'signin' ? 'Welcome back' : 'Create your account'}
-            </h1>
-            <p className="text-gray-400 text-sm">
-              {mode === 'signin'
-                ? 'Sign in to your BuildFlow workspace'
-                : 'Start managing your projects today'}
-            </p>
-          </div>
+          {/* Glass card */}
+          <div className="rounded-2xl px-8 py-8"
+            style={{
+              background: 'var(--bg-card)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              backdropFilter: 'blur(12px)',
+            }}>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === 'signup' && (
-              <Field label="Full Name">
+            {/* Building icon */}
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-6 mx-auto"
+              style={{ background: 'rgba(79,142,247,0.15)', border: '1px solid rgba(79,142,247,0.3)' }}>
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <rect x="2" y="9" width="14" height="8" rx="1" fill="none" stroke="#4f8ef7" strokeWidth="1.4"/>
+                <rect x="5" y="5.5" width="8" height="4.5" rx="0.7" fill="none" stroke="#4f8ef7" strokeWidth="1.2"/>
+                <rect x="3.5" y="12" width="3" height="3" rx="0.4" fill="#4f8ef7" fillOpacity="0.6"/>
+                <rect x="12.5" y="12" width="3" height="3" rx="0.4" fill="#4f8ef7" fillOpacity="0.6"/>
+                <rect x="7.5" y="12" width="3" height="5" rx="0.4" fill="#4f8ef7" fillOpacity="0.6"/>
+              </svg>
+            </div>
+
+            <div className="mb-6 text-center">
+              <h1 className="text-xl font-medium mb-1" style={{ color: 'var(--text-primary)', letterSpacing: '0.02em' }}>
+                {mode === 'signin' ? 'Welcome back' : 'Create your account'}
+              </h1>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                {mode === 'signin'
+                  ? 'The smarter way to design and quote'
+                  : 'Start managing your projects today'}
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {mode === 'signup' && (
+                <Field label="Full Name">
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    placeholder="John Smith"
+                    className="input-dark w-full rounded-xl px-4 py-3 text-sm"
+                  />
+                </Field>
+              )}
+
+              <Field label="Email Address">
                 <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
-                  placeholder="John Smith"
-                  className={inputCls}
+                  placeholder="you@company.com"
+                  className="input-dark w-full rounded-xl px-4 py-3 text-sm"
                 />
               </Field>
-            )}
 
-            <Field label="Email Address">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                placeholder="you@company.com"
-                className={inputCls}
-              />
-            </Field>
+              <Field label="Password">
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  placeholder="••••••••"
+                  className="input-dark w-full rounded-xl px-4 py-3 text-sm"
+                />
+              </Field>
 
-            <Field label="Password">
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                placeholder="••••••••"
-                className={inputCls}
-              />
-            </Field>
+              {error && (
+                <div className="flex items-start gap-2.5 rounded-xl px-4 py-3"
+                  style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                  <span className="mt-0.5 shrink-0" style={{ color: '#f87171' }}>
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.5"/><path d="M7 4v3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><circle cx="7" cy="10" r="0.75" fill="currentColor"/></svg>
+                  </span>
+                  <p className="text-sm" style={{ color: '#fca5a5' }}>{error}</p>
+                </div>
+              )}
+              {message && (
+                <div className="flex items-start gap-2.5 rounded-xl px-4 py-3"
+                  style={{ background: 'rgba(31,216,164,0.1)', border: '1px solid rgba(31,216,164,0.25)' }}>
+                  <span className="mt-0.5 shrink-0" style={{ color: 'var(--success)' }}>
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.5"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </span>
+                  <p className="text-sm" style={{ color: 'var(--success)' }}>{message}</p>
+                </div>
+              )}
 
-            {error && (
-              <div className="flex items-start gap-2.5 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
-                <span className="text-red-400 mt-0.5 shrink-0">
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.5"/><path d="M7 4v3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><circle cx="7" cy="10" r="0.75" fill="currentColor"/></svg>
-                </span>
-                <p className="text-red-600 text-sm">{error}</p>
-              </div>
-            )}
-            {message && (
-              <div className="flex items-start gap-2.5 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
-                <span className="text-emerald-500 mt-0.5 shrink-0">
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.5"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </span>
-                <p className="text-emerald-700 text-sm">{message}</p>
-              </div>
-            )}
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn-glow w-full font-semibold py-3 rounded-xl cursor-pointer text-sm mt-2 disabled:opacity-50"
+                style={{
+                  background: 'var(--accent-blue)',
+                  color: '#fff',
+                  boxShadow: '0 4px 20px rgba(79,142,247,0.3)',
+                }}
+              >
+                {loading ? 'Please wait…' : mode === 'signin' ? 'Sign In' : 'Create Account'}
+              </button>
+            </form>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-[#0a1628] hover:bg-[#152238] text-white font-semibold py-3 rounded-xl transition-all disabled:opacity-50 cursor-pointer text-sm mt-2 shadow-[0_4px_20px_rgba(10,22,40,0.25)]"
-            >
-              {loading ? 'Please wait…' : mode === 'signin' ? 'Sign In' : 'Create Account'}
-            </button>
-          </form>
-
-          <p className="mt-6 text-center text-sm text-gray-400">
-            {mode === 'signin' ? (
-              <>
-                No account?{' '}
-                <button
-                  onClick={() => { setMode('signup'); setError(null); setMessage(null) }}
-                  className="text-[#0a1628] font-semibold hover:underline cursor-pointer"
-                >
-                  Sign up free
-                </button>
-              </>
-            ) : (
-              <>
-                Already have an account?{' '}
-                <button
-                  onClick={() => { setMode('signin'); setError(null); setMessage(null) }}
-                  className="text-[#0a1628] font-semibold hover:underline cursor-pointer"
-                >
-                  Sign in
-                </button>
-              </>
-            )}
-          </p>
+            <p className="mt-5 text-center text-sm" style={{ color: 'var(--text-tertiary)' }}>
+              {mode === 'signin' ? (
+                <>
+                  No account?{' '}
+                  <button
+                    onClick={() => { setMode('signup'); setError(null); setMessage(null) }}
+                    className="font-semibold hover:underline cursor-pointer"
+                    style={{ color: 'var(--accent-blue)' }}
+                  >
+                    Sign up free
+                  </button>
+                </>
+              ) : (
+                <>
+                  Already have an account?{' '}
+                  <button
+                    onClick={() => { setMode('signin'); setError(null); setMessage(null) }}
+                    className="font-semibold hover:underline cursor-pointer"
+                    style={{ color: 'var(--accent-blue)' }}
+                  >
+                    Sign in
+                  </button>
+                </>
+              )}
+            </p>
+          </div>
         </div>
       </div>
     </div>
   )
 }
 
-const inputCls =
-  'w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 bg-gray-50 outline-none placeholder:text-gray-300 focus:bg-white focus:ring-2 focus:ring-[#0a1628]/10 focus:border-[#0a1628]/30 transition-all'
-
 function Field({ label, children }) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">{label}</label>
+      <label className="block text-[10px] font-semibold uppercase tracking-widest"
+        style={{ color: 'rgba(255,255,255,0.4)' }}>{label}</label>
       {children}
     </div>
   )
@@ -199,8 +237,8 @@ function Field({ label, children }) {
 function Stat({ value, label }) {
   return (
     <div>
-      <div className="text-white font-bold text-lg leading-none">{value}</div>
-      <div className="text-white/40 text-xs mt-1">{label}</div>
+      <div className="font-bold text-lg leading-none tabular-nums" style={{ color: 'var(--text-primary)' }}>{value}</div>
+      <div className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.4)' }}>{label}</div>
     </div>
   )
 }
@@ -208,16 +246,17 @@ function Stat({ value, label }) {
 function LogoMark() {
   return (
     <div className="flex items-center gap-2.5">
-      <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/30">
+      <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+        style={{ background: 'var(--accent-blue)', boxShadow: '0 4px 14px rgba(79,142,247,0.4)' }}>
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
           <rect x="2" y="7" width="12" height="7" rx="1" fill="white" fillOpacity="0.9"/>
           <rect x="4.5" y="4" width="7" height="4" rx="0.75" fill="white"/>
-          <rect x="3" y="10" width="2.5" height="2.5" rx="0.4" fill="#3b82f6"/>
-          <rect x="10.5" y="10" width="2.5" height="2.5" rx="0.4" fill="#3b82f6"/>
-          <rect x="6.75" y="10" width="2.5" height="4" rx="0.4" fill="#3b82f6"/>
+          <rect x="3" y="10" width="2.5" height="2.5" rx="0.4" fill="#4f8ef7"/>
+          <rect x="10.5" y="10" width="2.5" height="2.5" rx="0.4" fill="#4f8ef7"/>
+          <rect x="6.75" y="10" width="2.5" height="4" rx="0.4" fill="#4f8ef7"/>
         </svg>
       </div>
-      <span className="text-white font-bold text-base tracking-tight">BuildFlow Pro</span>
+      <span className="font-bold text-base tracking-tight" style={{ color: 'var(--text-primary)' }}>BuildFlow Pro</span>
     </div>
   )
 }
