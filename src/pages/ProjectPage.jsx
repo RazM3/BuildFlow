@@ -803,7 +803,10 @@ export default function ProjectPage({ clientOnly = false }) {
           setOpenWalls(new Set(meta?.keys ?? []))
           if (aiMeta?.client)      setAiClientMsgs(aiMeta.client)
           if (aiMeta?.builder)     setAiBuilderMsgs(aiMeta.builder)
-          if (msgMeta?.messages)   setMessages(msgMeta.messages)
+          if (msgMeta?.messages) {
+            setMessages(msgMeta.messages)
+            setSeenBuilderMsgs(msgMeta.messages.filter(m => m.from === 'builder').length)
+          }
           uid = Math.max(...rms.map(r => r.id || 0), 0) + 1
         }
         if (data.wall_type)       setWallType(data.wall_type)
@@ -889,8 +892,12 @@ export default function ProjectPage({ clientOnly = false }) {
   }, [rooms, openWalls, wallType, floorType, roofType, margin, gstOn, builderNotes, style, budget, finishes, budgetTier, aiClientMsgs, aiBuilderMsgs, messages, saveProject])
 
   // ── realtime / presence / toast
-  const [toast,        setToast]        = useState('')
-  const [clientOnline, setClientOnline] = useState(false)
+  const [toast,           setToast]           = useState('')
+  const [clientOnline,    setClientOnline]    = useState(false)
+  const [builderOnline,   setBuilderOnline]   = useState(false)
+  const [clientChatOpen,  setClientChatOpen]  = useState(false)
+  const [chatInput,       setChatInput]       = useState('')
+  const [seenBuilderMsgs, setSeenBuilderMsgs] = useState(0)
   const toastTimer = useRef(null)
 
   const showToast = useCallback((msg) => {
@@ -919,9 +926,15 @@ export default function ProjectPage({ clientOnly = false }) {
     const presKey = clientOnly ? 'client' : 'builder'
     const presChannel = supabase.channel(`presence:${id}`, { config: { presence: { key: presKey } } })
     if (clientOnly) {
-      presChannel.subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') await presChannel.track({ role: 'client', at: Date.now() })
-      })
+      presChannel
+        .on('presence', { event: 'sync' }, () => {
+          const state = presChannel.presenceState()
+          const online = Object.values(state).flat().some(u => u.role === 'builder')
+          setBuilderOnline(online)
+        })
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') await presChannel.track({ role: 'client', at: Date.now() })
+        })
     } else {
       presChannel
         .on('presence', { event: 'sync' }, () => {
@@ -929,11 +942,25 @@ export default function ProjectPage({ clientOnly = false }) {
           const online = Object.values(state).flat().some(u => u.role === 'client')
           setClientOnline(online)
         })
-        .subscribe()
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') await presChannel.track({ role: 'builder', at: Date.now() })
+        })
     }
     channels.push(presChannel)
 
-    // ── data sync: builder subscribes to live project updates
+    // ── data sync
+    if (clientOnly) {
+      // Client subscribes to project updates so builder replies appear in real-time
+      const dataChannel = supabase.channel(`db:project:client:${id}`)
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'projects', filter: `id=eq.${id}` }, payload => {
+          const fp = payload.new?.floor_plan
+          if (!fp) return
+          const msgMeta = fp.find(r => r.type === '_msg_')
+          if (msgMeta?.messages) setMessages(msgMeta.messages)
+        })
+        .subscribe()
+      channels.push(dataChannel)
+    }
     if (!clientOnly) {
       const dataChannel = supabase.channel(`db:project:${id}`)
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'projects', filter: `id=eq.${id}` }, payload => {
@@ -1262,6 +1289,14 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
     setMsgText('')
   }
 
+  const sendChatMessage = () => {
+    if (!chatInput.trim()) return
+    setMessages(m => [...m, { from: 'client', text: chatInput.trim(), time: 'Just now' }])
+    setChatInput('')
+  }
+
+  const clientUnread = Math.max(0, messages.filter(m => m.from === 'builder').length - seenBuilderMsgs)
+
   const projectName = project?.client_name || detailForm.client_name || 'Loading…'
   const projectAddr = project?.address     || detailForm.address     || ''
   const CW = 1400, CH = 1000
@@ -1342,6 +1377,26 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                   </>
                 )}
               </span>
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    setClientChatOpen(o => !o)
+                    if (!clientChatOpen) setSeenBuilderMsgs(messages.filter(m => m.from === 'builder').length)
+                  }}
+                  className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl transition cursor-pointer border ${
+                    clientChatOpen
+                      ? 'bg-[#1a3a5c] text-white border-[#1a3a5c]'
+                      : 'text-[#1a3a5c] border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+                  }`}>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d="M10.5 7a.75.75 0 01-.75.75H3.5L1.5 10V2.75A.75.75 0 012.25 2h7.5a.75.75 0 01.75.75V7z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Message builder
+                </button>
+                {clientUnread > 0 && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
+                )}
+              </div>
               <button onClick={() => setAiClientOpen(o => !o)}
                 className={`flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl transition cursor-pointer shadow-sm ${
                   aiClientOpen ? 'bg-[#1a3a5c] text-white' : 'bg-gradient-to-r from-[#1a3a5c] to-[#2d6a9f] text-white hover:shadow-md'
@@ -1670,6 +1725,20 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                 onSaveNow={saveNow}
               />
             )}
+          </div>
+        )}
+
+        {/* ── CLIENT CHAT PANEL — slides in from right */}
+        {clientOnly && (
+          <div style={{ width: clientChatOpen ? 260 : 0, flexShrink: 0, overflow: 'hidden', transition: 'width 200ms ease', borderLeft: clientChatOpen ? '1px solid #f3f4f6' : 'none' }}>
+            <ClientChatPanel
+              messages={messages}
+              chatInput={chatInput}
+              setChatInput={setChatInput}
+              onSend={sendChatMessage}
+              onClose={() => setClientChatOpen(false)}
+              builderOnline={builderOnline}
+            />
           </div>
         )}
       </div>
@@ -2066,38 +2135,6 @@ function ClientRightPanel({ rooms, selId, setSelId, updRoom, messages, msgText, 
           </div>
         </div>
 
-        {/* SECTION 4 — messages */}
-        <div className="px-5 pb-5">
-          {messages && messages.length > 0 && (
-            <div className="space-y-2 mb-3 max-h-48 overflow-y-auto">
-              {messages.map((m, i) => {
-                const isMe = m.from === 'client'
-                return (
-                  <div key={i} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                    <span className="text-[9px] text-gray-400 mb-0.5 px-1">
-                      {isMe ? 'You' : 'Builder'}
-                    </span>
-                    <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-[12px] leading-relaxed ${
-                      isMe
-                        ? 'bg-[#1a3a5c] text-white rounded-br-sm'
-                        : 'bg-gray-100 text-gray-700 rounded-bl-sm'
-                    }`}>
-                      {m.text}
-                    </div>
-                    <span className="text-[9px] text-gray-300 mt-0.5 px-1">{m.time}</span>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-          <textarea
-            value={msgText}
-            onChange={e => setMsgText(e.target.value)}
-            placeholder="Any requests or questions for your builder..."
-            rows={3}
-            className="w-full text-[13px] border border-gray-200 rounded-2xl px-4 py-3 text-gray-700 outline-none focus:ring-2 focus:ring-[#1a3a5c]/15 focus:border-[#1a3a5c]/30 bg-white resize-none placeholder:text-gray-300 transition leading-relaxed"
-          />
-        </div>
       </div>
 
       {/* SECTION 5 — submit (always visible) */}
@@ -2120,6 +2157,108 @@ function ClientRightPanel({ rooms, selId, setSelId, updRoom, messages, msgText, 
           ) : 'Send to builder'}
         </button>
       </div>
+    </div>
+  )
+}
+
+// ─── client chat panel ────────────────────────────────────────────────────────
+function ClientChatPanel({ messages, chatInput, setChatInput, onSend, onClose, builderOnline }) {
+  const bottomRef = useRef(null)
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  const lastIsClient = messages.length > 0 && messages[messages.length - 1].from === 'client'
+
+  return (
+    <div className="flex flex-col bg-white" style={{ width: 260, height: '100%' }}>
+
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-gray-100 shrink-0">
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#1a3a5c" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 8a.75.75 0 01-.75.75H3.5L1.5 11V2.75A.75.75 0 012.25 2h9A.75.75 0 0112 2.75V8z"/>
+            </svg>
+            <span className="font-bold text-[#1a3a5c] text-[13px]">Builder chat</span>
+          </div>
+          <button onClick={onClose}
+            className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition cursor-pointer">
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+              <path d="M1.5 1.5l8 8M9.5 1.5l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+            </svg>
+          </button>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${builderOnline ? 'bg-emerald-400' : 'bg-gray-300'}`} />
+          <span className="text-[10px] text-gray-400">{builderOnline ? 'Builder online' : 'Builder offline'}</span>
+        </div>
+      </div>
+
+      {/* Message thread */}
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        {messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center mb-3 text-gray-300">
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 13.5a1 1 0 01-1 1H5.5L2 18V4a1 1 0 011-1h15a1 1 0 011 1v9.5z"/>
+              </svg>
+            </div>
+            <p className="text-[13px] font-semibold text-gray-400 mb-1">Start a conversation</p>
+            <p className="text-[11px] text-gray-300">with your builder</p>
+            <div className="mt-4 px-3 py-2 bg-gray-50 rounded-xl border border-gray-100 max-w-[180px]">
+              <p className="text-[10px] text-gray-400 italic leading-relaxed">"Can we make the kitchen bigger?"</p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {messages.map((m, i) => {
+              const isMe = m.from === 'client'
+              const showLabel = i === 0 || messages[i - 1].from !== m.from
+              return (
+                <div key={i} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                  {showLabel && (
+                    <span className="text-[10px] text-gray-400 mb-1 px-1">{isMe ? 'You' : 'Builder'}</span>
+                  )}
+                  <div
+                    className={`max-w-[90%] px-3 py-2 text-[12px] leading-relaxed ${
+                      isMe ? 'bg-[#1a3a5c] text-white' : 'bg-gray-100 text-gray-700'
+                    }`}
+                    style={{ borderRadius: isMe ? '8px 8px 2px 8px' : '8px 8px 8px 2px' }}
+                  >
+                    {m.text}
+                  </div>
+                  <span className="text-[9px] text-gray-300 mt-0.5 px-1">{m.time}</span>
+                </div>
+              )
+            })}
+            {lastIsClient && (
+              <p className="text-[10px] text-gray-400 italic text-center py-1">Builder will respond soon</p>
+            )}
+            <div ref={bottomRef} />
+          </div>
+        )}
+      </div>
+
+      {/* Input — pinned bottom */}
+      <div className="px-4 py-3 border-t border-gray-100 shrink-0">
+        <textarea
+          value={chatInput}
+          onChange={e => setChatInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend() } }}
+          placeholder="Message your builder..."
+          rows={2}
+          className="w-full text-[12px] border border-gray-200 rounded-xl px-3 py-2 text-gray-700 outline-none focus:ring-2 focus:ring-[#1a3a5c]/15 focus:border-[#1a3a5c]/30 bg-white resize-none placeholder:text-gray-300 transition leading-relaxed mb-2"
+        />
+        <div className="flex justify-end">
+          <button onClick={onSend} disabled={!chatInput.trim()}
+            className="bg-[#1a3a5c] hover:bg-[#243f63] disabled:opacity-30 text-white text-[12px] font-semibold px-4 py-1.5 rounded-xl transition cursor-pointer">
+            Send
+          </button>
+        </div>
+      </div>
+
     </div>
   )
 }
