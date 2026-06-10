@@ -1435,6 +1435,26 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                 <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1l1.2 2.4 2.6.4-1.9 1.8.5 2.6-2.4-1.3-2.4 1.3.5-2.6L2.7 3.8l2.6-.4z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/><path d="M2 10.5h9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
                 Generate floor plan
               </button>
+              {view === 'client' && (
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      setClientChatOpen(o => !o)
+                      if (!clientChatOpen) setSeenBuilderMsgs(messages.filter(m => m.sender_role === 'builder').length)
+                    }}
+                    className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer border ${
+                      clientChatOpen ? 'bg-[#1a3a5c] text-white border-[#1a3a5c]' : 'text-[#1a3a5c] border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+                    }`}>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                      <path d="M10.5 7a.75.75 0 01-.75.75H3.5L1.5 10V2.75A.75.75 0 012.25 2h7.5a.75.75 0 01.75.75V7z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Message builder
+                  </button>
+                  {clientUnread > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
+                  )}
+                </div>
+              )}
               <div className="relative">
                 <button onClick={sendToClient}
                   className="flex items-center gap-1.5 text-xs font-semibold text-white bg-blue-500 hover:bg-blue-600 px-3 py-1.5 rounded-lg transition cursor-pointer">
@@ -1717,7 +1737,7 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
         )}
 
         {/* ── CLIENT CHAT PANEL — slides in from right */}
-        {clientOnly && (
+        {(clientOnly || view === 'client') && (
           <div style={{ width: clientChatOpen ? 260 : 0, flexShrink: 0, overflow: 'hidden', transition: 'width 200ms ease', borderLeft: clientChatOpen ? '1px solid #f3f4f6' : 'none' }}>
             <ClientChatPanel
               messages={messages}
