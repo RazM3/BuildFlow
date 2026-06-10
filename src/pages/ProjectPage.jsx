@@ -1645,6 +1645,8 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                     gstOn={gstOn} setGstOn={setGstOn}
                     builderNotes={builderNotes} setBuilderNotes={setBuilderNotes}
                     onExportPDF={handleExportPDF}
+                    clientName={projectName}
+                    msgText={msgText} setMsgText={setMsgText} onSend={sendMessage}
                   />
                 ) : (
                   <DetailsPanel
@@ -1661,6 +1663,7 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                 selId={selId}
                 setSelId={setSelId}
                 updRoom={updRoom}
+                messages={messages}
                 msgText={msgText}
                 setMsgText={setMsgText}
                 onSend={sendMessage}
@@ -1752,6 +1755,7 @@ function BuilderPanel({
   baseCost, withMargin, total, totalSqm, rooms, selRoom, messages,
   wallType, setWallType, floorType, setFloorType, roofType, setRoofType,
   margin, setMargin, gstOn, setGstOn, builderNotes, setBuilderNotes, onExportPDF,
+  clientName, msgText, setMsgText, onSend,
 }) {
   const selDef = selRoom ? ROOM_DEFS.find(d => d.type === selRoom.type) : null
   const selBase = selRoom ? cost(selRoom) * (WALL_MULT[wallType]||1) * (FLOOR_MULT[floorType]||1) * (ROOF_MULT[roofType]||1) : 0
@@ -1878,19 +1882,47 @@ function BuilderPanel({
         )
       })()}
 
-      {/* Client comments */}
-      <div className="px-4 py-3 flex-1">
-        <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-2">Client Comments</p>
-        <div className="space-y-2">
-          {messages.map((m, i) => (
-            <div key={i} className={`rounded-xl px-3 py-2 text-[11px] ${m.from === 'client' ? 'bg-gray-50 text-gray-600' : 'bg-[#1a3a5c]/5 text-[#1a3a5c]'}`}>
-              <div className="flex items-center justify-between mb-0.5">
-                <span className="font-bold text-[10px] capitalize">{m.from}</span>
-                <span className="text-gray-300 text-[9px]">{m.time}</span>
+      {/* Client messages */}
+      <div className="px-4 py-3 flex flex-col flex-1">
+        <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-3">Messages</p>
+        <div className="space-y-2 flex-1 overflow-y-auto mb-3">
+          {messages.length === 0 && (
+            <p className="text-[11px] text-gray-300 text-center py-3">No messages yet</p>
+          )}
+          {messages.map((m, i) => {
+            const isBuilder = m.from === 'builder'
+            return (
+              <div key={i} className={`flex flex-col ${isBuilder ? 'items-end' : 'items-start'}`}>
+                <span className="text-[9px] text-gray-400 mb-0.5 px-1">
+                  {isBuilder ? 'You' : (clientName || 'Client')}
+                </span>
+                <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-[11px] leading-relaxed ${
+                  isBuilder
+                    ? 'bg-[#1a3a5c] text-white rounded-br-sm'
+                    : 'bg-gray-100 text-gray-700 rounded-bl-sm'
+                }`}>
+                  {m.text}
+                </div>
+                <span className="text-[9px] text-gray-300 mt-0.5 px-1">{m.time}</span>
               </div>
-              {m.text}
-            </div>
-          ))}
+            )
+          })}
+        </div>
+        <div className="flex gap-1.5">
+          <input
+            type="text"
+            value={msgText}
+            onChange={e => setMsgText(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && onSend()}
+            placeholder="Reply to client…"
+            className="flex-1 text-[11px] border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-1 focus:ring-[#1a3a5c]/20 focus:border-[#1a3a5c]/30 bg-white"
+          />
+          <button onClick={onSend} disabled={!msgText?.trim()}
+            className="bg-[#1a3a5c] text-white rounded-xl px-3 py-2 hover:bg-[#243f63] transition cursor-pointer disabled:opacity-30">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M1 6h10M6.5 1.5L11 6l-4.5 4.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
         </div>
       </div>
     </>
@@ -1911,7 +1943,7 @@ function RoomIcon({ type = '', size = 16 }) {
   return <svg {...p}><path d="M2.5 9.5L9 3.5l6.5 6M4.5 8.5v7h9v-7"/></svg>
 }
 
-function ClientRightPanel({ rooms, selId, setSelId, updRoom, msgText, setMsgText, onSend, onSaveNow }) {
+function ClientRightPanel({ rooms, selId, setSelId, updRoom, messages, msgText, setMsgText, onSend, onSaveNow }) {
   const [submitted, setSubmitted] = useState(false)
   const selRoom = rooms.find(r => r.id === selId) ?? null
   const catalog  = selRoom ? getRoomCatalog(selRoom.type) : null
@@ -2034,8 +2066,30 @@ function ClientRightPanel({ rooms, selId, setSelId, updRoom, msgText, setMsgText
           </div>
         </div>
 
-        {/* SECTION 4 — note to builder */}
+        {/* SECTION 4 — messages */}
         <div className="px-5 pb-5">
+          {messages && messages.length > 0 && (
+            <div className="space-y-2 mb-3 max-h-48 overflow-y-auto">
+              {messages.map((m, i) => {
+                const isMe = m.from === 'client'
+                return (
+                  <div key={i} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                    <span className="text-[9px] text-gray-400 mb-0.5 px-1">
+                      {isMe ? 'You' : 'Builder'}
+                    </span>
+                    <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-[12px] leading-relaxed ${
+                      isMe
+                        ? 'bg-[#1a3a5c] text-white rounded-br-sm'
+                        : 'bg-gray-100 text-gray-700 rounded-bl-sm'
+                    }`}>
+                      {m.text}
+                    </div>
+                    <span className="text-[9px] text-gray-300 mt-0.5 px-1">{m.time}</span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
           <textarea
             value={msgText}
             onChange={e => setMsgText(e.target.value)}
