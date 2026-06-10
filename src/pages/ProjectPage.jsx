@@ -376,6 +376,14 @@ const snap    = v => Math.round(v / GRID) * GRID
 const wallKey = (a, b) => a < b ? `${a}-${b}` : `${b}-${a}`
 const pxToM   = px => (px / MPX).toFixed(1)
 const fmtAUD = n => '$' + Math.round(n).toLocaleString('en-AU')
+const fmtMsgTime = ts => {
+  if (!ts) return ''
+  const d = new Date(ts), now = new Date(), diff = (now - d) / 1000
+  if (diff < 60)    return 'Just now'
+  if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
+}
 const cost   = r => {
   const d = ROOM_DEFS.find(x => x.type === r.type)
   return d ? (r.w / MPX) * (r.h / MPX) * d.rate + (d.flat || 0) : 0
@@ -690,11 +698,9 @@ export default function ProjectPage({ clientOnly = false }) {
   const [style,    setStyle]    = useState('Modern')
   const [budget,   setBudget]   = useState(450000)
   const [finishes, setFinishes] = useState({ Kitchen: 'Mid Range', Flooring: 'Standard', Windows: 'Aluminium' })
-  const [msgText,  setMsgText]  = useState('')
-  const [messages, setMessages] = useState([
-    { from: 'client',  text: 'Can we make the master bedroom a bit larger?',   time: '2h ago' },
-    { from: 'builder', text: "No problem — updated it to 4.5m × 4m for you.", time: '1h ago' },
-  ])
+  const [builderMsgInput, setBuilderMsgInput] = useState('')
+  const [clientMsgInput,  setClientMsgInput]  = useState('')
+  const [messages,        setMessages]        = useState([])
   const [catalogRoom,   setCatalogRoom]   = useState(null) // room id for per-room material dropdown
   const [showHelp,      setShowHelp]      = useState(() => clientOnly && !localStorage.getItem('bf_client_help'))
   // AI state
@@ -731,7 +737,6 @@ export default function ProjectPage({ clientOnly = false }) {
   const budgetTierRef   = useRef(budgetTier)
   const aiClientMsgsRef  = useRef([])
   const aiBuilderMsgsRef = useRef([])
-  const messagesRef      = useRef(messages)
 
   useEffect(() => { detailFormRef.current     = detailForm },    [detailForm])
   useEffect(() => { zoomRef.current           = zoom },          [zoom])
@@ -749,7 +754,6 @@ export default function ProjectPage({ clientOnly = false }) {
   useEffect(() => { budgetTierRef.current     = budgetTier },    [budgetTier])
   useEffect(() => { aiClientMsgsRef.current   = aiClientMsgs },  [aiClientMsgs])
   useEffect(() => { aiBuilderMsgsRef.current  = aiBuilderMsgs }, [aiBuilderMsgs])
-  useEffect(() => { messagesRef.current       = messages },       [messages])
 
   useEffect(() => {
     if (!highlightId) return
@@ -797,16 +801,11 @@ export default function ProjectPage({ clientOnly = false }) {
         if (data.floor_plan?.length) {
           const meta    = data.floor_plan.find(r => r.type === '_ow_')
           const aiMeta  = data.floor_plan.find(r => r.type === '_ai_')
-          const msgMeta = data.floor_plan.find(r => r.type === '_msg_')
           const rms     = data.floor_plan.filter(r => !['_ow_','_ai_','_msg_'].includes(r.type))
           setRooms(rms)
           setOpenWalls(new Set(meta?.keys ?? []))
-          if (aiMeta?.client)      setAiClientMsgs(aiMeta.client)
-          if (aiMeta?.builder)     setAiBuilderMsgs(aiMeta.builder)
-          if (msgMeta?.messages) {
-            setMessages(msgMeta.messages)
-            setSeenBuilderMsgs(msgMeta.messages.filter(m => m.from === 'builder').length)
-          }
+          if (aiMeta?.client)  setAiClientMsgs(aiMeta.client)
+          if (aiMeta?.builder) setAiBuilderMsgs(aiMeta.builder)
           uid = Math.max(...rms.map(r => r.id || 0), 0) + 1
         }
         if (data.wall_type)       setWallType(data.wall_type)
@@ -814,6 +813,16 @@ export default function ProjectPage({ clientOnly = false }) {
         if (data.client_style)    setStyle(data.client_style)
         if (data.client_budget)   setBudget(data.client_budget)
         if (data.client_finishes) setFinishes(data.client_finishes)
+      }
+      // Load messages from dedicated table
+      const { data: msgs } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('project_id', id)
+        .order('created_at', { ascending: true })
+      if (msgs) {
+        setMessages(msgs)
+        setSeenBuilderMsgs(msgs.filter(m => m.sender_role === 'builder').length)
       }
       setLoading(false)
       setSaveStatus('saved')
@@ -837,7 +846,7 @@ export default function ProjectPage({ clientOnly = false }) {
           address:         form.address     || '',
           status:          form.status      || 'Draft',
           notes:           form.notes       || '',
-          floor_plan:      [...roomsRef.current, { type: '_ow_', keys: [...openWallsRef.current] }, { type: '_ai_', client: aiClientMsgsRef.current, builder: aiBuilderMsgsRef.current }, { type: '_msg_', messages: messagesRef.current }],
+          floor_plan:      [...roomsRef.current, { type: '_ow_', keys: [...openWallsRef.current] }, { type: '_ai_', client: aiClientMsgsRef.current, builder: aiBuilderMsgsRef.current }],
           wall_type:       wallTypeRef.current,
           floor_type:      floorTypeRef.current,
           client_style:    styleRef.current,
@@ -865,7 +874,6 @@ export default function ProjectPage({ clientOnly = false }) {
           ...roomsRef.current,
           { type: '_ow_',  keys:     [...openWallsRef.current] },
           { type: '_ai_',  client:   aiClientMsgsRef.current, builder: aiBuilderMsgsRef.current },
-          { type: '_msg_', messages: messagesRef.current },
         ],
         wall_type:       wallTypeRef.current,
         floor_type:      floorTypeRef.current,
@@ -889,14 +897,12 @@ export default function ProjectPage({ clientOnly = false }) {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(saveProject, 3000)
     return () => clearTimeout(saveTimerRef.current)
-  }, [rooms, openWalls, wallType, floorType, roofType, margin, gstOn, builderNotes, style, budget, finishes, budgetTier, aiClientMsgs, aiBuilderMsgs, messages, saveProject])
+  }, [rooms, openWalls, wallType, floorType, roofType, margin, gstOn, builderNotes, style, budget, finishes, budgetTier, aiClientMsgs, aiBuilderMsgs, saveProject])
 
   // ── realtime / presence / toast
   const [toast,           setToast]           = useState('')
   const [clientOnline,    setClientOnline]    = useState(false)
-  const [builderOnline,   setBuilderOnline]   = useState(false)
   const [clientChatOpen,  setClientChatOpen]  = useState(false)
-  const [chatInput,       setChatInput]       = useState('')
   const [seenBuilderMsgs, setSeenBuilderMsgs] = useState(0)
   const toastTimer = useRef(null)
 
@@ -925,49 +931,36 @@ export default function ProjectPage({ clientOnly = false }) {
     // ── presence: who is viewing
     const presKey = clientOnly ? 'client' : 'builder'
     const presChannel = supabase.channel(`presence:${id}`, { config: { presence: { key: presKey } } })
-    if (clientOnly) {
-      presChannel
-        .on('presence', { event: 'sync' }, () => {
-          const state = presChannel.presenceState()
-          const online = Object.values(state).flat().some(u => u.role === 'builder')
-          setBuilderOnline(online)
-        })
-        .subscribe(async (status) => {
-          if (status === 'SUBSCRIBED') await presChannel.track({ role: 'client', at: Date.now() })
-        })
-    } else {
-      presChannel
-        .on('presence', { event: 'sync' }, () => {
-          const state = presChannel.presenceState()
+    presChannel
+      .on('presence', { event: 'sync' }, () => {
+        const state = presChannel.presenceState()
+        if (clientOnly) {
+          // client doesn't need to do anything with presence here
+        } else {
           const online = Object.values(state).flat().some(u => u.role === 'client')
           setClientOnline(online)
-        })
-        .subscribe(async (status) => {
-          if (status === 'SUBSCRIBED') await presChannel.track({ role: 'builder', at: Date.now() })
-        })
-    }
+        }
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') await presChannel.track({ role: clientOnly ? 'client' : 'builder', at: Date.now() })
+      })
     channels.push(presChannel)
 
-    // ── data sync
-    if (clientOnly) {
-      // Client subscribes to project updates so builder replies appear in real-time
-      const dataChannel = supabase.channel(`db:project:client:${id}`)
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'projects', filter: `id=eq.${id}` }, payload => {
-          const fp = payload.new?.floor_plan
-          if (!fp) return
-          const msgMeta = fp.find(r => r.type === '_msg_')
-          if (msgMeta?.messages) setMessages(msgMeta.messages)
-        })
-        .subscribe()
-      channels.push(dataChannel)
-    }
+    // ── real-time messages (both sides)
+    const msgChannel = supabase.channel(`messages:${id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `project_id=eq.${id}` }, payload => {
+        setMessages(prev => [...prev, payload.new])
+      })
+      .subscribe()
+    channels.push(msgChannel)
+
+    // ── builder: live room/material updates from client
     if (!clientOnly) {
       const dataChannel = supabase.channel(`db:project:${id}`)
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'projects', filter: `id=eq.${id}` }, payload => {
           const fp = payload.new?.floor_plan
           if (!fp) return
           const rms = fp.filter(r => !['_ow_','_ai_','_msg_'].includes(r.type))
-          // highlight any room whose clientMaterials changed
           const prev = roomsRef.current
           rms.forEach(nr => {
             const pr = prev.find(r => r.id === nr.id)
@@ -979,8 +972,6 @@ export default function ProjectPage({ clientOnly = false }) {
           setRooms(rms)
           const owMeta = fp.find(r => r.type === '_ow_')
           if (owMeta) setOpenWalls(new Set(owMeta.keys ?? []))
-          const msgMeta = fp.find(r => r.type === '_msg_')
-          if (msgMeta?.messages) setMessages(msgMeta.messages)
         })
         .subscribe()
       channels.push(dataChannel)
@@ -1282,20 +1273,21 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
     return () => window.removeEventListener('keydown', onKey)
   }, [delSel, undo])
 
-  const sendMessage = () => {
-    if (!msgText.trim()) return
-    const from = clientOnly ? 'client' : 'builder'
-    setMessages(m => [...m, { from, text: msgText.trim(), time: 'Just now' }])
-    setMsgText('')
+  const sendBuilderMessage = async () => {
+    const text = builderMsgInput.trim()
+    if (!text || !id || isNew) return
+    setBuilderMsgInput('')
+    await supabase.from('messages').insert({ project_id: id, sender_role: 'builder', message_text: text })
   }
 
-  const sendChatMessage = () => {
-    if (!chatInput.trim()) return
-    setMessages(m => [...m, { from: 'client', text: chatInput.trim(), time: 'Just now' }])
-    setChatInput('')
+  const sendClientMessage = async () => {
+    const text = clientMsgInput.trim()
+    if (!text || !id || isNew) return
+    setClientMsgInput('')
+    await supabase.from('messages').insert({ project_id: id, sender_role: 'client', message_text: text })
   }
 
-  const clientUnread = Math.max(0, messages.filter(m => m.from === 'builder').length - seenBuilderMsgs)
+  const clientUnread = Math.max(0, messages.filter(m => m.sender_role === 'builder').length - seenBuilderMsgs)
 
   const projectName = project?.client_name || detailForm.client_name || 'Loading…'
   const projectAddr = project?.address     || detailForm.address     || ''
@@ -1381,7 +1373,7 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                 <button
                   onClick={() => {
                     setClientChatOpen(o => !o)
-                    if (!clientChatOpen) setSeenBuilderMsgs(messages.filter(m => m.from === 'builder').length)
+                    if (!clientChatOpen) setSeenBuilderMsgs(messages.filter(m => m.sender_role === 'builder').length)
                   }}
                   className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl transition cursor-pointer border ${
                     clientChatOpen
@@ -1701,7 +1693,7 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                     builderNotes={builderNotes} setBuilderNotes={setBuilderNotes}
                     onExportPDF={handleExportPDF}
                     clientName={projectName}
-                    msgText={msgText} setMsgText={setMsgText} onSend={sendMessage}
+                    msgInput={builderMsgInput} setMsgInput={setBuilderMsgInput} onSend={sendBuilderMessage}
                   />
                 ) : (
                   <DetailsPanel
@@ -1718,10 +1710,6 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                 selId={selId}
                 setSelId={setSelId}
                 updRoom={updRoom}
-                messages={messages}
-                msgText={msgText}
-                setMsgText={setMsgText}
-                onSend={sendMessage}
                 onSaveNow={saveNow}
               />
             )}
@@ -1733,11 +1721,10 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
           <div style={{ width: clientChatOpen ? 260 : 0, flexShrink: 0, overflow: 'hidden', transition: 'width 200ms ease', borderLeft: clientChatOpen ? '1px solid #f3f4f6' : 'none' }}>
             <ClientChatPanel
               messages={messages}
-              chatInput={chatInput}
-              setChatInput={setChatInput}
-              onSend={sendChatMessage}
+              input={clientMsgInput}
+              setInput={setClientMsgInput}
+              onSend={sendClientMessage}
               onClose={() => setClientChatOpen(false)}
-              builderOnline={builderOnline}
             />
           </div>
         )}
@@ -1824,7 +1811,7 @@ function BuilderPanel({
   baseCost, withMargin, total, totalSqm, rooms, selRoom, messages,
   wallType, setWallType, floorType, setFloorType, roofType, setRoofType,
   margin, setMargin, gstOn, setGstOn, builderNotes, setBuilderNotes, onExportPDF,
-  clientName, msgText, setMsgText, onSend,
+  clientName, msgInput, setMsgInput, onSend,
 }) {
   const selDef = selRoom ? ROOM_DEFS.find(d => d.type === selRoom.type) : null
   const selBase = selRoom ? cost(selRoom) * (WALL_MULT[wallType]||1) * (FLOOR_MULT[floorType]||1) * (ROOF_MULT[roofType]||1) : 0
@@ -1952,27 +1939,23 @@ function BuilderPanel({
       })()}
 
       {/* Client messages */}
-      <div className="px-4 py-3 flex flex-col flex-1">
-        <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-3">Messages</p>
-        <div className="space-y-2 flex-1 overflow-y-auto mb-3">
-          {messages.length === 0 && (
-            <p className="text-[11px] text-gray-300 text-center py-3">No messages yet</p>
-          )}
-          {messages.map((m, i) => {
-            const isBuilder = m.from === 'builder'
+      <div className="px-4 py-3 border-t border-gray-50 flex flex-col" style={{ minHeight: 0 }}>
+        <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-3">Client Messages</p>
+        <div className="space-y-2 overflow-y-auto mb-3" style={{ maxHeight: 220 }}>
+          {messages.length === 0 ? (
+            <p className="text-[11px] text-gray-300 text-center py-4">No messages yet</p>
+          ) : messages.map((m, i) => {
+            const isBuilder = m.sender_role === 'builder'
             return (
-              <div key={i} className={`flex flex-col ${isBuilder ? 'items-end' : 'items-start'}`}>
-                <span className="text-[9px] text-gray-400 mb-0.5 px-1">
-                  {isBuilder ? 'You' : (clientName || 'Client')}
-                </span>
-                <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-[11px] leading-relaxed ${
-                  isBuilder
-                    ? 'bg-[#1a3a5c] text-white rounded-br-sm'
-                    : 'bg-gray-100 text-gray-700 rounded-bl-sm'
-                }`}>
-                  {m.text}
+              <div key={m.id ?? i} className={`flex flex-col ${isBuilder ? 'items-end' : 'items-start'}`}>
+                <span className="text-[9px] text-gray-400 mb-0.5 px-1">{isBuilder ? 'You' : (clientName || 'Client')}</span>
+                <div
+                  className={`max-w-[85%] px-3 py-2 text-[11px] leading-relaxed ${isBuilder ? 'bg-[#1a3a5c] text-white' : 'bg-gray-100 text-gray-700'}`}
+                  style={{ borderRadius: isBuilder ? '8px 8px 2px 8px' : '8px 8px 8px 2px' }}
+                >
+                  {m.message_text}
                 </div>
-                <span className="text-[9px] text-gray-300 mt-0.5 px-1">{m.time}</span>
+                <span className="text-[9px] text-gray-300 mt-0.5 px-1">{fmtMsgTime(m.created_at)}</span>
               </div>
             )
           })}
@@ -1980,13 +1963,13 @@ function BuilderPanel({
         <div className="flex gap-1.5">
           <input
             type="text"
-            value={msgText}
-            onChange={e => setMsgText(e.target.value)}
+            value={msgInput}
+            onChange={e => setMsgInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && onSend()}
-            placeholder="Reply to client…"
+            placeholder="Message client…"
             className="flex-1 text-[11px] border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-1 focus:ring-[#1a3a5c]/20 focus:border-[#1a3a5c]/30 bg-white"
           />
-          <button onClick={onSend} disabled={!msgText?.trim()}
+          <button onClick={onSend} disabled={!msgInput?.trim()}
             className="bg-[#1a3a5c] text-white rounded-xl px-3 py-2 hover:bg-[#243f63] transition cursor-pointer disabled:opacity-30">
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M1 6h10M6.5 1.5L11 6l-4.5 4.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -2012,7 +1995,7 @@ function RoomIcon({ type = '', size = 16 }) {
   return <svg {...p}><path d="M2.5 9.5L9 3.5l6.5 6M4.5 8.5v7h9v-7"/></svg>
 }
 
-function ClientRightPanel({ rooms, selId, setSelId, updRoom, messages, msgText, setMsgText, onSend, onSaveNow }) {
+function ClientRightPanel({ rooms, selId, setSelId, updRoom, onSaveNow }) {
   const [submitted, setSubmitted] = useState(false)
   const selRoom = rooms.find(r => r.id === selId) ?? null
   const catalog  = selRoom ? getRoomCatalog(selRoom.type) : null
@@ -2025,7 +2008,6 @@ function ClientRightPanel({ rooms, selId, setSelId, updRoom, messages, msgText, 
   }
 
   const handleSubmit = () => {
-    if (msgText.trim()) onSend()
     setSubmitted(true)
     setTimeout(() => setSubmitted(false), 3000)
   }
@@ -2162,38 +2144,27 @@ function ClientRightPanel({ rooms, selId, setSelId, updRoom, messages, msgText, 
 }
 
 // ─── client chat panel ────────────────────────────────────────────────────────
-function ClientChatPanel({ messages, chatInput, setChatInput, onSend, onClose, builderOnline }) {
+function ClientChatPanel({ messages, input, setInput, onSend, onClose }) {
   const bottomRef = useRef(null)
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
-
-  const lastIsClient = messages.length > 0 && messages[messages.length - 1].from === 'client'
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
   return (
     <div className="flex flex-col bg-white" style={{ width: 260, height: '100%' }}>
 
       {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-100 shrink-0">
-        <div className="flex items-center justify-between mb-1.5">
-          <div className="flex items-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#1a3a5c" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 8a.75.75 0 01-.75.75H3.5L1.5 11V2.75A.75.75 0 012.25 2h9A.75.75 0 0112 2.75V8z"/>
-            </svg>
-            <span className="font-bold text-[#1a3a5c] text-[13px]">Builder chat</span>
-          </div>
-          <button onClick={onClose}
-            className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition cursor-pointer">
-            <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-              <path d="M1.5 1.5l8 8M9.5 1.5l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-            </svg>
-          </button>
+      <div className="px-4 py-3 border-b border-gray-100 shrink-0 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#1a3a5c" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 8a.75.75 0 01-.75.75H3.5L1.5 11V2.75A.75.75 0 012.25 2h9A.75.75 0 0112 2.75V8z"/>
+          </svg>
+          <span className="font-bold text-[#1a3a5c] text-[13px]">Builder chat</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${builderOnline ? 'bg-emerald-400' : 'bg-gray-300'}`} />
-          <span className="text-[10px] text-gray-400">{builderOnline ? 'Builder online' : 'Builder offline'}</span>
-        </div>
+        <button onClick={onClose}
+          className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition cursor-pointer">
+          <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+            <path d="M1.5 1.5l8 8M9.5 1.5l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+          </svg>
+        </button>
       </div>
 
       {/* Message thread */}
@@ -2207,35 +2178,27 @@ function ClientChatPanel({ messages, chatInput, setChatInput, onSend, onClose, b
             </div>
             <p className="text-[13px] font-semibold text-gray-400 mb-1">Start a conversation</p>
             <p className="text-[11px] text-gray-300">with your builder</p>
-            <div className="mt-4 px-3 py-2 bg-gray-50 rounded-xl border border-gray-100 max-w-[180px]">
-              <p className="text-[10px] text-gray-400 italic leading-relaxed">"Can we make the kitchen bigger?"</p>
-            </div>
           </div>
         ) : (
           <div className="space-y-3">
             {messages.map((m, i) => {
-              const isMe = m.from === 'client'
-              const showLabel = i === 0 || messages[i - 1].from !== m.from
+              const isMe = m.sender_role === 'client'
+              const showLabel = i === 0 || messages[i - 1].sender_role !== m.sender_role
               return (
-                <div key={i} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                <div key={m.id ?? i} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                   {showLabel && (
                     <span className="text-[10px] text-gray-400 mb-1 px-1">{isMe ? 'You' : 'Builder'}</span>
                   )}
                   <div
-                    className={`max-w-[90%] px-3 py-2 text-[12px] leading-relaxed ${
-                      isMe ? 'bg-[#1a3a5c] text-white' : 'bg-gray-100 text-gray-700'
-                    }`}
+                    className={`max-w-[90%] px-3 py-2 text-[12px] leading-relaxed ${isMe ? 'bg-[#1a3a5c] text-white' : 'bg-gray-100 text-gray-700'}`}
                     style={{ borderRadius: isMe ? '8px 8px 2px 8px' : '8px 8px 8px 2px' }}
                   >
-                    {m.text}
+                    {m.message_text}
                   </div>
-                  <span className="text-[9px] text-gray-300 mt-0.5 px-1">{m.time}</span>
+                  <span className="text-[9px] text-gray-300 mt-0.5 px-1">{fmtMsgTime(m.created_at)}</span>
                 </div>
               )
             })}
-            {lastIsClient && (
-              <p className="text-[10px] text-gray-400 italic text-center py-1">Builder will respond soon</p>
-            )}
             <div ref={bottomRef} />
           </div>
         )}
@@ -2244,15 +2207,15 @@ function ClientChatPanel({ messages, chatInput, setChatInput, onSend, onClose, b
       {/* Input — pinned bottom */}
       <div className="px-4 py-3 border-t border-gray-100 shrink-0">
         <textarea
-          value={chatInput}
-          onChange={e => setChatInput(e.target.value)}
+          value={input}
+          onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend() } }}
           placeholder="Message your builder..."
           rows={2}
           className="w-full text-[12px] border border-gray-200 rounded-xl px-3 py-2 text-gray-700 outline-none focus:ring-2 focus:ring-[#1a3a5c]/15 focus:border-[#1a3a5c]/30 bg-white resize-none placeholder:text-gray-300 transition leading-relaxed mb-2"
         />
         <div className="flex justify-end">
-          <button onClick={onSend} disabled={!chatInput.trim()}
+          <button onClick={onSend} disabled={!input.trim()}
             className="bg-[#1a3a5c] hover:bg-[#243f63] disabled:opacity-30 text-white text-[12px] font-semibold px-4 py-1.5 rounded-xl transition cursor-pointer">
             Send
           </button>
