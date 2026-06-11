@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { exportQuotePDF } from '../lib/generatePDF'
-import { FLOOR_PLAN_TEMPLATES } from '../components/FloorPlanTemplates'
 
 // ─── constants ────────────────────────────────────────────────────────────────
 const GRID = 20
@@ -201,44 +200,11 @@ const getRoomSelectionSummary = (rooms) =>
       return entries.length ? { name: r.type, choices: entries.join(', ') } : null
     }).filter(Boolean)
 
-// ─── smart generator constants ────────────────────────────────────────────────
-const EXTRA_ROOMS = ['Study', 'Theatre Room', 'Home Gym', 'Walk-in Pantry', 'Mudroom', 'Pool Deck', 'Alfresco', 'Workshop', 'Home Office']
-
-const SIZE_LABEL_MAP = [
-  [120, 'Compact studio or granny flat'],
-  [200, 'Small starter home'],
-  [280, 'Comfortable 3-bedroom home'],
-  [350, 'Spacious family home'],
-  [450, 'Large family home'],
-  [550, 'Executive home'],
-  [650, 'Large luxury home'],
-  [Infinity, 'Grand luxury estate'],
-]
-const sizeLabel = sz => SIZE_LABEL_MAP.find(([max]) => sz <= max)[1]
-
-// ─── TEMPLATES ────────────────────────────────────────────────────────────────
-const FLOOR_TEMPLATES = [
-  {
-    id: 'aussie_family',
-    name: 'The Aussie Family',
-    desc: '4 bed · 2 bath · Double garage · Alfresco',
-    size: '320m²',
-    params: { houseSize: 320, bedrooms: 4, bathrooms: 2, extras: [], singleGarage: false },
-  },
-  {
-    id: 'first_home',
-    name: 'First Home Starter',
-    desc: '3 bed · 1 bath · Single garage · Alfresco',
-    size: '220m²',
-    params: { houseSize: 220, bedrooms: 3, bathrooms: 1, extras: [], singleGarage: true },
-  },
-  {
-    id: 'executive',
-    name: 'The Executive',
-    desc: '4 bed · 2 bath · Theatre · Study · Large alfresco',
-    size: '450m²',
-    params: { houseSize: 450, bedrooms: 4, bathrooms: 2, extras: ['Theatre Room', 'Study'], singleGarage: false },
-  },
+// ─── floor plan presets ────────────────────────────────────────────────────────
+const FP_PRESETS = [
+  { id: '2b1b', label: '2 Bed · 1 Bath', size: '~180 m²', params: { houseSize: 180, bedrooms: 2, bathrooms: 1, extras: [], singleGarage: true  } },
+  { id: '3b2b', label: '3 Bed · 2 Bath', size: '~260 m²', params: { houseSize: 260, bedrooms: 3, bathrooms: 2, extras: [], singleGarage: false } },
+  { id: '4b2b', label: '4 Bed · 2 Bath', size: '~350 m²', params: { houseSize: 350, bedrooms: 4, bathrooms: 2, extras: [], singleGarage: false } },
 ]
 
 function generateFloorPlan({ houseSize = 320, bedrooms = 4, bathrooms = 2, extras = [], singleGarage = false }) {
@@ -368,6 +334,21 @@ function generateFloorPlan({ houseSize = 320, bedrooms = 4, bathrooms = 2, extra
       if (aSet?.has(b.type) && roomsAdj(a, b)) openWallKeys.push(wallKey(a.id, b.id))
     }
   }
+
+  // Assign stable string IDs for floor plan view
+  const _typeBase = {
+    'Master Bedroom': 'bedroom-master', 'Bedroom': 'bedroom',
+    'Living Room': 'living', 'Kitchen': 'kitchen', 'Dining Room': 'dining',
+    'Bathroom': 'bathroom', 'Ensuite': 'ensuite', 'Walk-in Robe': 'wir',
+    'Garage': 'garage', 'Foyer': 'foyer', 'Laundry': 'laundry',
+    'Alfresco': 'alfresco', 'Corridor': 'corridor',
+  }
+  const _cnt = {}
+  rooms.forEach(r => {
+    const base = _typeBase[r.type] ?? r.type.toLowerCase().replace(/\s+/g, '-')
+    _cnt[base] = (_cnt[base] || 0) + 1
+    r.stableId = _cnt[base] === 1 ? base : `${base}-${_cnt[base]}`
+  })
 
   return { rooms, openWallKeys }
 }
@@ -717,8 +698,7 @@ export default function ProjectPage({ clientOnly = false }) {
   const [budgetTier,    setBudgetTier]    = useState('midrange')
   const [rpTab,    setRpTab]    = useState('costs') // 'costs' | 'details'
   const [saveStatus, setSaveStatus] = useState('saved') // 'idle'|'unsaved'|'saving'|'saved'
-  const [showTemplates, setShowTemplates] = useState(false)
-  const [copiedMsg,     setCopiedMsg]     = useState(false)
+const [copiedMsg,     setCopiedMsg]     = useState(false)
   // details form
   const [detailForm, setDetailForm] = useState({ client_name: '', address: '', status: 'In Progress', notes: '' })
   const [detailSaving, setDetailSaving] = useState(false)
@@ -1523,15 +1503,7 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5l3 3 3-3M1 9v1a1 1 0 001 1h8a1 1 0 001-1V9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 Export PDF
               </button>
-              <button onClick={() => setShowTemplates(true)}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer"
-                style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
-                onMouseEnter={e => { e.currentTarget.style.color='var(--text-primary)'; e.currentTarget.style.borderColor='rgba(0,0,0,0.2)' }}
-                onMouseLeave={e => { e.currentTarget.style.color='var(--text-secondary)'; e.currentTarget.style.borderColor='var(--border)' }}>
-                <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1l1.2 2.4 2.6.4-1.9 1.8.5 2.6-2.4-1.3-2.4 1.3.5-2.6L2.7 3.8l2.6-.4z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/><path d="M2 10.5h9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-                Generate floor plan
-              </button>
-              {view === 'client' && (
+{view === 'client' && (
                 <div className="relative">
                   <button
                     onClick={() => {
@@ -1752,16 +1724,23 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
 
           {fpTab ? (
             floorPlanTemplate ? (
-              <FloorPlanCanvas
-                templateId={floorPlanTemplate}
-                hoveredRoom={fpHoveredRoom}
+              <FloorPlanView
+                rooms={rooms}
+                openWalls={openWalls}
+                fpHoveredRoom={fpHoveredRoom}
                 onHover={setFpHoveredRoom}
                 onLeave={() => setFpHoveredRoom(null)}
+                costFn={r => { const b = cost(r)*(WALL_MULT[wallType]||1)*(FLOOR_MULT[floorType]||1)*(ROOF_MULT[roofType]||1)*(1+margin/100); return gstOn ? b*1.1 : b }}
                 builderMode={!clientOnly && view === 'builder'}
                 onChangeTemplate={() => setFloorPlanTemplate(null)}
               />
             ) : (!clientOnly && view === 'builder') ? (
-              <FloorPlanPicker onSelect={chooseFloorPlanTemplate} />
+              <FloorPlanPicker
+                onSelect={(tid, plan) => {
+                  loadGeneratedRooms(plan)
+                  chooseFloorPlanTemplate(tid)
+                }}
+              />
             ) : (
               <FloorPlanClientPlaceholder />
             )
@@ -1950,11 +1929,7 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
         />
       )}
 
-      {showTemplates && (
-        <SmartGeneratorModal onGenerate={loadGeneratedRooms} onClose={() => setShowTemplates(false)} />
-      )}
-
-      {/* ── toast */}
+{/* ── toast */}
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] pointer-events-none">
           <div className="text-white text-[12px] font-medium px-4 py-2.5 rounded-full shadow-xl flex items-center gap-2"
@@ -2630,206 +2605,6 @@ function ClientPanel({ clientOnly, onOpenAI, rooms, style, setStyle, budgetTier,
   )
 }
 
-// ─── smart generator modal ────────────────────────────────────────────────────
-function SmartGeneratorModal({ onGenerate, onClose }) {
-  const [selectedId,  setSelectedId]  = useState(null)
-  const [generated,   setGenerated]   = useState(false)
-  const [customMode,  setCustomMode]  = useState(false)
-  const [bedrooms,    setBedrooms]    = useState(4)
-  const [bathrooms,   setBathrooms]   = useState(2)
-  const [houseSize,   setHouseSize]   = useState(350)
-  const [extras,      setExtras]      = useState([])
-  const [singleGar,   setSingleGar]   = useState(false)
-
-  const toggleExtra = e => setExtras(p => p.includes(e) ? p.filter(x => x !== e) : [...p, e])
-
-  const handleTemplate = tpl => {
-    setSelectedId(tpl.id)
-    onGenerate(generateFloorPlan(tpl.params))
-    setGenerated(true)
-  }
-
-  const handleCustom = () => {
-    onGenerate(generateFloorPlan({ houseSize, bedrooms, bathrooms, extras, singleGarage: singleGar }))
-    setGenerated(true)
-    setSelectedId('custom')
-  }
-
-  const TEMPLATE_ICONS = {
-    aussie_family: (
-      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-        <path d="M4 16L14 7l10 9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M7 14v8h14v-8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        <rect x="11" y="18" width="6" height="4" rx="0.5" stroke="currentColor" strokeWidth="1.4"/>
-        <rect x="4" y="18" width="4" height="4" stroke="currentColor" strokeWidth="1.2"/>
-      </svg>
-    ),
-    first_home: (
-      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-        <path d="M5 16L14 8l9 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M8 14v8h12v-8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        <rect x="11" y="18" width="5" height="4" rx="0.5" stroke="currentColor" strokeWidth="1.4"/>
-      </svg>
-    ),
-    executive: (
-      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-        <path d="M2 17L14 6l12 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M5 15v9h18v-9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        <rect x="12" y="19" width="5" height="5" rx="0.5" stroke="currentColor" strokeWidth="1.4"/>
-        <rect x="5" y="19" width="4" height="5" stroke="currentColor" strokeWidth="1.2"/>
-        <path d="M19 19v-4h4v4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      </svg>
-    ),
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-6"
-      style={{ background: 'rgba(10,22,40,0.6)', backdropFilter: 'blur(6px)' }}
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden modal-enter">
-
-        {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex items-center justify-between">
-          <div>
-            <h2 className="text-[#1A3AE5] font-bold text-base">
-              {generated ? 'Floor Plan Ready' : customMode ? 'Custom Floor Plan' : 'Choose a Template'}
-            </h2>
-            <p className="text-gray-400 text-xs mt-0.5">
-              {generated ? 'Drag rooms to reposition · handles to resize · ⌘Z to undo'
-                : customMode ? 'Configure your custom design below'
-                : 'Real Australian builder layouts — edit after loading'}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {customMode && !generated && (
-              <button onClick={() => setCustomMode(false)}
-                className="text-[11px] text-gray-400 hover:text-gray-600 cursor-pointer transition">
-                ← Templates
-              </button>
-            )}
-            <button onClick={onClose}
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 transition cursor-pointer">
-              <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 2l9 9M11 2l-9 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div className="px-6 py-5 min-h-[260px]">
-          {generated ? (
-            <div className="text-center py-6">
-              <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
-                  <circle cx="13" cy="13" r="11" stroke="#10b981" strokeWidth="1.6"/>
-                  <path d="M8 13l3.5 3.5 7-7" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-              <h3 className="text-[#1A3AE5] font-bold text-lg mb-2">
-                {selectedId !== 'custom'
-                  ? (FLOOR_TEMPLATES.find(t => t.id === selectedId)?.name ?? 'Custom Plan')
-                  : 'Custom Floor Plan'}
-              </h3>
-              <p className="text-gray-300 text-xs">Drag rooms to reposition · handles to resize</p>
-            </div>
-
-          ) : customMode ? (
-            <div className="space-y-5">
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { label: 'Bedrooms',  val: bedrooms,  set: setBedrooms,  min: 1, max: 6 },
-                  { label: 'Bathrooms', val: bathrooms, set: setBathrooms, min: 1, max: 4 },
-                ].map(({ label, val, set, min, max }) => (
-                  <div key={label} className="text-center">
-                    <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-3">{label}</p>
-                    <div className="flex items-center justify-center gap-4">
-                      <button onClick={() => set(v => Math.max(min, v - 1))}
-                        className="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold transition cursor-pointer border-gray-200 text-gray-500 hover:border-[#1A3AE5] hover:text-[#1A3AE5]">−</button>
-                      <span className="text-3xl font-bold text-[#1A3AE5] w-8 text-center tabular-nums">{val}</span>
-                      <button onClick={() => set(v => Math.min(max, v + 1))}
-                        className="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold transition cursor-pointer border-gray-200 text-gray-500 hover:border-[#1A3AE5] hover:text-[#1A3AE5]">+</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div>
-                <div className="flex justify-between mb-1.5">
-                  <span className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold">House size</span>
-                  <span className="text-[11px] font-bold text-[#1A3AE5]">{houseSize}m²</span>
-                </div>
-                <input type="range" min={120} max={600} step={10} value={houseSize}
-                  onChange={e => setHouseSize(+e.target.value)} className="w-full accent-[#1a3a5c] cursor-pointer" />
-              </div>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <div onClick={() => setSingleGar(g => !g)}
-                  className={`w-8 h-4 rounded-full transition-colors relative cursor-pointer ${singleGar ? 'bg-[#1A3AE5]' : 'bg-gray-200'}`}>
-                  <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${singleGar ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                </div>
-                <span className="text-[11px] text-gray-500">Single garage</span>
-              </label>
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-2">Optional extras</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {EXTRA_ROOMS.map(e => (
-                    <button key={e} onClick={() => toggleExtra(e)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer ${
-                        extras.includes(e) ? 'bg-[#1A3AE5] text-white border-[#1A3AE5]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
-                      }`}>
-                      {e}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-          ) : (
-            <div className="space-y-3">
-              {FLOOR_TEMPLATES.map(tpl => (
-                <button key={tpl.id} onClick={() => handleTemplate(tpl)}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-gray-100 hover:border-[#1A3AE5] hover:bg-[#1A3AE5]/3 text-left transition cursor-pointer group">
-                  <div className="w-12 h-12 rounded-xl bg-[#1A3AE5]/6 flex items-center justify-center text-[#1A3AE5] shrink-0 group-hover:bg-[#1A3AE5]/10 transition">
-                    {TEMPLATE_ICONS[tpl.id]}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-bold text-[#1A3AE5] text-sm">{tpl.name}</span>
-                      <span className="text-gray-300 text-[10px] font-medium">{tpl.size}</span>
-                    </div>
-                    <p className="text-gray-400 text-[11px] mt-0.5">{tpl.desc}</p>
-                  </div>
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-gray-300 group-hover:text-[#1A3AE5] transition shrink-0">
-                    <path d="M4 2l5 5-5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-              ))}
-              <button onClick={() => setCustomMode(true)}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-gray-200 text-gray-400 text-xs font-semibold hover:border-gray-300 hover:text-gray-600 transition cursor-pointer mt-1">
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                Custom layout
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        {(generated || customMode) && (
-          <div className="px-6 pb-6">
-            {generated ? (
-              <button onClick={onClose}
-                className="w-full bg-[#1A3AE5] hover:bg-[#1530c0] text-white font-semibold text-sm py-3 rounded-xl transition cursor-pointer">
-                Start editing
-              </button>
-            ) : (
-              <button onClick={handleCustom}
-                className="w-full flex items-center justify-center gap-2 bg-[#1A3AE5] hover:bg-[#1530c0] text-white font-semibold text-sm py-3 rounded-xl transition cursor-pointer">
-                Generate floor plan
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
 
 function PropIcon({ type, active }) {
   const c = active ? '#1a3a5c' : '#94a3b8'
@@ -3647,56 +3422,77 @@ const IconUndo    = () => <svg width="13" height="13" viewBox="0 0 13 13" fill="
 
 // ─── floor plan components ────────────────────────────────────────────────────
 
-// ─── FloorPlanPicker: template selection screen (builder) ─────────────────────
+// ─── FloorPlanPicker: pick from 3 generated presets ──────────────────────────
 function FloorPlanPicker({ onSelect }) {
   const [selected, setSelected] = useState(null)
+
+  const ICONS = {
+    '2b1b': (
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <path d="M5 16L14 8l9 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M8 14v8h12v-8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <rect x="11" y="18" width="5" height="4" rx="0.5" stroke="currentColor" strokeWidth="1.4"/>
+      </svg>
+    ),
+    '3b2b': (
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <path d="M4 16L14 7l10 9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M7 14v8h14v-8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <rect x="11" y="18" width="6" height="4" rx="0.5" stroke="currentColor" strokeWidth="1.4"/>
+        <rect x="4" y="18" width="4" height="4" stroke="currentColor" strokeWidth="1.2"/>
+      </svg>
+    ),
+    '4b2b': (
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <path d="M2 17L14 6l12 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M5 15v9h18v-9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <rect x="12" y="19" width="5" height="5" rx="0.5" stroke="currentColor" strokeWidth="1.4"/>
+        <rect x="5" y="19" width="4" height="5" stroke="currentColor" strokeWidth="1.2"/>
+        <path d="M19 19v-4h4v4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      </svg>
+    ),
+  }
+
   return (
     <div className="flex-1 flex flex-col overflow-auto">
-      <div className="max-w-4xl mx-auto w-full px-8 py-8">
+      <div className="max-w-2xl mx-auto w-full px-8 py-8">
         <div className="mb-6">
           <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
             Choose a floor plan
           </h2>
           <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-            Select a template to display on this project. Hover a room to see its name.
+            Pick a design — rooms load on the canvas for editing. Hover any room to see its name and price.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
-          {FLOOR_PLAN_TEMPLATES.map(t => {
-            const isSelected = selected === t.id
+        <div className="space-y-3 mb-8">
+          {FP_PRESETS.map(p => {
+            const isSel = selected === p.id
             return (
-              <button
-                key={t.id}
-                onClick={() => setSelected(t.id)}
-                className="text-left rounded-2xl transition cursor-pointer"
+              <button key={p.id} onClick={() => setSelected(p.id)}
+                className="w-full flex items-center gap-4 p-4 rounded-xl text-left transition cursor-pointer"
                 style={{
-                  border: isSelected ? '2px solid #1A3AE5' : '2px solid var(--border)',
-                  background: isSelected ? 'rgba(26,58,229,0.03)' : 'var(--bg-card)',
-                  boxShadow: isSelected ? '0 0 0 4px rgba(26,58,229,0.08)' : '0 1px 3px rgba(0,0,0,0.04)',
-                  padding: 0, outline: 'none',
-                }}
-              >
-                {/* SVG preview */}
-                <div className="rounded-t-xl overflow-hidden px-4 pt-4 pb-3" style={{ background: 'white' }}>
-                  <t.Component hoveredRoom={null} onHover={() => {}} onLeave={() => {}} />
+                  border: isSel ? '2px solid #1A3AE5' : '2px solid var(--border)',
+                  background: isSel ? 'rgba(26,58,229,0.03)' : 'var(--bg-card)',
+                  boxShadow: isSel ? '0 0 0 4px rgba(26,58,229,0.08)' : '0 1px 3px rgba(0,0,0,0.04)',
+                  outline: 'none',
+                }}>
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition"
+                  style={{ background: isSel ? 'rgba(26,58,229,0.1)' : 'rgba(26,58,229,0.06)', color: '#1A3AE5' }}>
+                  {ICONS[p.id]}
                 </div>
-                {/* Label row */}
-                <div className="px-4 py-3 flex items-center justify-between"
-                  style={{ borderTop: '1px solid var(--border)' }}>
-                  <div>
-                    <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t.label}</p>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{t.size}</p>
-                  </div>
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${
-                    isSelected ? 'border-[#1A3AE5] bg-[#1A3AE5]' : 'border-gray-300'
-                  }`}>
-                    {isSelected && (
-                      <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
-                        <path d="M1.5 4.5l2 2 4-4" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                  </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{p.label}</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{p.size} · with garage &amp; alfresco</p>
+                </div>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition ${
+                  isSel ? 'border-[#1A3AE5] bg-[#1A3AE5]' : 'border-gray-300'
+                }`}>
+                  {isSel && (
+                    <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                      <path d="M1.5 4.5l2 2 4-4" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
                 </div>
               </button>
             )
@@ -3705,12 +3501,16 @@ function FloorPlanPicker({ onSelect }) {
 
         <div className="flex justify-end">
           <button
-            onClick={() => selected && onSelect(selected)}
+            onClick={() => {
+              if (!selected) return
+              const preset = FP_PRESETS.find(p => p.id === selected)
+              onSelect(preset.id, generateFloorPlan(preset.params))
+            }}
             disabled={!selected}
             className="btn-glow text-white text-sm font-semibold px-6 py-2.5 rounded-xl cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
             style={{ background: 'var(--accent-blue)' }}
           >
-            Use this template
+            Use this plan
           </button>
         </div>
       </div>
@@ -3718,59 +3518,429 @@ function FloorPlanPicker({ onSelect }) {
   )
 }
 
-// ─── FloorPlanCanvas: renders chosen template with room hover ─────────────────
-function FloorPlanCanvas({ templateId, hoveredRoom, onHover, onLeave, builderMode, onChangeTemplate }) {
-  const tmpl = FLOOR_PLAN_TEMPLATES.find(t => t.id === templateId)
-  if (!tmpl) return null
+// ─── FloorPlanView: architectural SVG view of generated rooms ─────────────────
+function FloorPlanView(props) {
+  if (!props.rooms.length) return <FloorPlanClientPlaceholder />
+  return <FPViewCanvas {...props} />
+}
+
+function FPViewCanvas({ rooms, openWalls, fpHoveredRoom, onHover, onLeave, costFn, builderMode, onChangeTemplate }) {
+  // ── SVG bounds ────────────────────────────────────────────────────────────────
+  const minX = Math.min(...rooms.map(r => r.x))
+  const minY = Math.min(...rooms.map(r => r.y))
+  const maxX = Math.max(...rooms.map(r => r.x + r.w))
+  const maxY = Math.max(...rooms.map(r => r.y + r.h))
+
+  const DIM_L = 52, DIM_T = 48, SITE_R = 68, SITE_B = 32
+  const vx = minX - DIM_L, vy = minY - DIM_T
+  const vw = (maxX - minX) + DIM_L + SITE_R
+  const vh = (maxY - minY) + DIM_T + SITE_B
+
+  const bedCount  = rooms.filter(r => r.type === 'Bedroom').length + (rooms.some(r => r.type === 'Master Bedroom') ? 1 : 0)
+  const bathCount = rooms.filter(r => ['Bathroom', 'Ensuite'].includes(r.type)).length
+
+  // ── Window marks: double-glazing symbol on exterior walls ────────────────────
+  const WW_WIN = 26, WIN_GL = 2.5
+  const HW = WALL_EXT / 2 + 1
+
+  function windowMarksFor(room) {
+    if (['Corridor', 'Alfresco', 'Garage', 'Foyer'].includes(room.type)) return []
+    const door = doorSideFor(room, rooms)
+    const out = []
+    ;['N', 'S', 'E', 'W'].forEach(side => {
+      if (side === door) return
+      if (findAdjRoom(room, side, rooms)) return
+      const { x, y, w, h } = room
+      if ((side === 'N' || side === 'S') && w < WW_WIN + 24) return
+      if ((side === 'E' || side === 'W') && h < WW_WIN + 24) return
+
+      const k = `win-${room.id}-${side}`
+      if (side === 'N' || side === 'S') {
+        const mx = x + w / 2, wy = side === 'N' ? y : y + h
+        out.push(
+          <rect key={`${k}-m`} x={mx - WW_WIN/2} y={wy - HW} width={WW_WIN} height={HW*2}
+            fill="white" style={{ pointerEvents:'none' }} />,
+          <line key={`${k}-g1`} x1={mx - WW_WIN/2} y1={wy - WIN_GL} x2={mx + WW_WIN/2} y2={wy - WIN_GL}
+            stroke="#1c1c1c" strokeWidth={0.9} style={{ pointerEvents:'none' }} />,
+          <line key={`${k}-g2`} x1={mx - WW_WIN/2} y1={wy + WIN_GL} x2={mx + WW_WIN/2} y2={wy + WIN_GL}
+            stroke="#1c1c1c" strokeWidth={0.9} style={{ pointerEvents:'none' }} />,
+        )
+      } else {
+        const wx = side === 'W' ? x : x + w, my = y + h / 2
+        out.push(
+          <rect key={`${k}-m`} x={wx - HW} y={my - WW_WIN/2} width={HW*2} height={WW_WIN}
+            fill="white" style={{ pointerEvents:'none' }} />,
+          <line key={`${k}-g1`} x1={wx - WIN_GL} y1={my - WW_WIN/2} x2={wx - WIN_GL} y2={my + WW_WIN/2}
+            stroke="#1c1c1c" strokeWidth={0.9} style={{ pointerEvents:'none' }} />,
+          <line key={`${k}-g2`} x1={wx + WIN_GL} y1={my - WW_WIN/2} x2={wx + WIN_GL} y2={my + WW_WIN/2}
+            stroke="#1c1c1c" strokeWidth={0.9} style={{ pointerEvents:'none' }} />,
+        )
+      }
+    })
+    return out
+  }
+
+  // ── Dimension line values ─────────────────────────────────────────────────────
+  const W = ((maxX - minX) / MPX).toFixed(1)
+  const H = ((maxY - minY) / MPX).toFixed(1)
+  const dOff = 28, lc = '#bbb', tc = '#666', tL = 5
+
+  // ── Viewer state ─────────────────────────────────────────────────────────────
+  const MIN_ZOOM = 0.1, MAX_ZOOM = 5
+  const containerRef = useRef(null)
+  const [zoom, setZoom] = useState(1)
+  const [pan,  setPan]  = useState({ x: 0, y: 0 })
+  const zoomR  = useRef(1)
+  const panR   = useRef({ x: 0, y: 0 })
+  const dragR  = useRef(null)
+  const touchR = useRef(null)
+
+  function applyView(nz, np) {
+    zoomR.current = nz; panR.current = np
+    setZoom(nz); setPan(np)
+  }
+
+  function doFit() {
+    const el = containerRef.current; if (!el) return
+    const INSET = 32
+    const fz = Math.max(0.05, Math.min((el.clientWidth - INSET * 2) / vw, (el.clientHeight - INSET * 2) / vh))
+    applyView(fz, { x: (el.clientWidth - vw * fz) / 2, y: (el.clientHeight - vh * fz) / 2 })
+  }
+
+  useEffect(() => { doFit() }, [])  // fit on mount
+
+  useEffect(() => {
+    const el = containerRef.current; if (!el) return
+    const ro = new ResizeObserver(() => doFit())
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  // Wheel zoom — needs passive:false to call preventDefault
+  useEffect(() => {
+    const el = containerRef.current; if (!el) return
+    function onWheel(e) {
+      e.preventDefault()
+      const rect = el.getBoundingClientRect()
+      const cx = e.clientX - rect.left, cy = e.clientY - rect.top
+      const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12
+      const nz = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomR.current * factor))
+      const r  = nz / zoomR.current
+      applyView(nz, { x: cx - (cx - panR.current.x) * r, y: cy - (cy - panR.current.y) * r })
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
+
+  // Touch pinch + single-finger pan — needs passive:false
+  useEffect(() => {
+    const el = containerRef.current; if (!el) return
+    function onTouchMove(e) {
+      e.preventDefault()
+      if (e.touches.length === 2 && touchR.current) {
+        const t = e.touches
+        const d = Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY)
+        const { dist, startZoom, startPan, cx, cy } = touchR.current
+        const nz = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, startZoom * d / dist))
+        applyView(nz, {
+          x: cx - (cx - startPan.x) * (nz / startZoom),
+          y: cy - (cy - startPan.y) * (nz / startZoom),
+        })
+      } else if (e.touches.length === 1 && dragR.current) {
+        const np = {
+          x: dragR.current.px + e.touches[0].clientX - dragR.current.x,
+          y: dragR.current.py + e.touches[0].clientY - dragR.current.y,
+        }
+        panR.current = np; setPan(np)
+      }
+    }
+    el.addEventListener('touchmove', onTouchMove, { passive: false })
+    return () => el.removeEventListener('touchmove', onTouchMove)
+  }, [])
+
+  // Mouse pan — global so it works when cursor leaves container during drag
+  useEffect(() => {
+    function onMove(e) {
+      if (!dragR.current) return
+      const np = {
+        x: dragR.current.px + e.clientX - dragR.current.x,
+        y: dragR.current.py + e.clientY - dragR.current.y,
+      }
+      panR.current = np; setPan(np)
+    }
+    function onUp() {
+      dragR.current = null
+      if (containerRef.current) containerRef.current.style.cursor = 'grab'
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+  }, [])
+
+  function onContainerMouseDown(e) {
+    if (e.button !== 0) return
+    e.preventDefault()
+    dragR.current = { x: e.clientX, y: e.clientY, px: panR.current.x, py: panR.current.y }
+    e.currentTarget.style.cursor = 'grabbing'
+  }
+
+  function onContainerTouchStart(e) {
+    if (e.touches.length === 2) {
+      const rect = containerRef.current.getBoundingClientRect()
+      touchR.current = {
+        dist: Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY),
+        startZoom: zoomR.current, startPan: { ...panR.current },
+        cx: (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left,
+        cy: (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top,
+      }
+      dragR.current = null
+    } else if (e.touches.length === 1) {
+      dragR.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, px: panR.current.x, py: panR.current.y }
+    }
+  }
+
+  function zoomBtn(factor) {
+    const el = containerRef.current; if (!el) return
+    const cx = el.clientWidth / 2, cy = el.clientHeight / 2
+    const nz = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomR.current * factor))
+    const r  = nz / zoomR.current
+    applyView(nz, { x: cx - (cx - panR.current.x) * r, y: cy - (cy - panR.current.y) * r })
+  }
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* toolbar */}
       <div className="h-9 shrink-0 px-4 flex items-center gap-3"
         style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)' }}>
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{tmpl.label}</span>
-          <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>·</span>
-          <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{tmpl.size}</span>
-        </div>
-        {hoveredRoom && (
-          <div className="flex items-center gap-1.5 rounded-full px-2.5 py-1 fade-up"
+        <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Floor Plan</span>
+        <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>· {bedCount} bed · {bathCount} bath</span>
+        {fpHoveredRoom && (
+          <div className="flex items-center gap-1.5 rounded-full px-2.5 py-1"
             style={{ background: 'rgba(26,58,229,0.08)', border: '1px solid rgba(26,58,229,0.15)' }}>
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#1A3AE5' }} />
-            <span className="text-[11px] font-semibold capitalize" style={{ color: '#1A3AE5' }}>
-              {hoveredRoom.replace(/-/g, ' ')}
+            <span className="text-[11px] font-semibold" style={{ color: '#1A3AE5' }}>
+              {rooms.find(r => r.stableId === fpHoveredRoom)?.type ?? fpHoveredRoom}
             </span>
           </div>
         )}
-        {builderMode && (
-          <button
-            onClick={onChangeTemplate}
-            className="ml-auto text-xs font-semibold px-3 py-1 rounded-lg transition cursor-pointer"
-            style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor='rgba(0,0,0,0.2)'; e.currentTarget.style.color='var(--text-primary)' }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor='var(--border)'; e.currentTarget.style.color='var(--text-secondary)' }}
-          >
-            Change template
+        <div className="ml-auto flex items-center gap-1">
+          <button onClick={() => zoomBtn(1 / 1.3)} title="Zoom out"
+            className="w-7 h-7 flex items-center justify-center rounded-md text-[#9BA3AF] hover:bg-[rgba(0,0,0,0.05)] hover:text-[#5A6472] transition cursor-pointer">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.4"/><path d="M4 6h4M11 11l1.5 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
           </button>
-        )}
+          <span className="text-[11px] tabular-nums min-w-[34px] text-center" style={{ color: 'var(--text-tertiary)' }}>
+            {Math.round(zoom * 100)}%
+          </span>
+          <button onClick={() => zoomBtn(1.3)} title="Zoom in"
+            className="w-7 h-7 flex items-center justify-center rounded-md text-[#9BA3AF] hover:bg-[rgba(0,0,0,0.05)] hover:text-[#5A6472] transition cursor-pointer">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.4"/><path d="M4 6h4M6 4v4M11 11l1.5 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+          </button>
+          <div className="w-px h-4 mx-1" style={{ background: 'var(--border)' }} />
+          <button onClick={doFit} title="Fit to screen"
+            className="w-7 h-7 flex items-center justify-center rounded-md text-[#9BA3AF] hover:bg-[rgba(0,0,0,0.05)] hover:text-[#5A6472] transition cursor-pointer">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 4.5V1h3.5M9.5 1H13v3.5M13 9.5V13H9.5M4.5 13H1V9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+          {builderMode && (
+            <>
+              <div className="w-px h-4 mx-1" style={{ background: 'var(--border)' }} />
+              <button onClick={onChangeTemplate}
+                className="text-xs font-semibold px-3 py-1 rounded-lg transition cursor-pointer"
+                style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor='rgba(0,0,0,0.2)'; e.currentTarget.style.color='var(--text-primary)' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor='var(--border)';   e.currentTarget.style.color='var(--text-secondary)' }}>
+                Change plan
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* SVG canvas */}
-      <div className="flex-1 overflow-auto flex items-center justify-center p-6">
-        <div className="w-full max-w-3xl rounded-2xl bg-white p-6"
-          style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06), 0 8px 32px rgba(0,0,0,0.08)', border: '1px solid var(--border)' }}>
-          <tmpl.Component
-            hoveredRoom={hoveredRoom}
-            onHover={onHover}
-            onLeave={onLeave}
-          />
+      {/* zoom/pan canvas */}
+      <div
+        ref={containerRef}
+        className="flex-1 overflow-hidden relative"
+        style={{ background: 'var(--bg-canvas)', cursor: 'grab' }}
+        onMouseDown={onContainerMouseDown}
+        onTouchStart={onContainerTouchStart}
+        onTouchEnd={() => { dragR.current = null; touchR.current = null }}
+      >
+        <div style={{
+          position: 'absolute', top: 0, left: 0,
+          width: vw, height: vh,
+          transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+          transformOrigin: '0 0',
+          borderRadius: 16,
+          background: 'white',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.06), 0 8px 32px rgba(0,0,0,0.08)',
+          border: '1px solid var(--border)',
+        }}>
+          <svg viewBox={`${vx} ${vy} ${vw} ${vh}`} width={vw} height={vh} style={{ display: 'block' }}>
+
+            {/* ── 1. Room fills — white base, hover tint (no pointer events) ── */}
+            {rooms.map(r => (
+              <rect key={`fill-${r.id}`}
+                x={r.x} y={r.y} width={r.w} height={r.h}
+                fill={fpHoveredRoom === r.stableId ? 'rgba(26,58,229,0.07)' : 'white'}
+                stroke="none"
+                style={{ pointerEvents:'none', transition:'fill 140ms ease' }} />
+            ))}
+
+            {/* ── 2. Furniture outlines (restored from getFurniturePaths) ── */}
+            {rooms.flatMap(r => {
+              if (r.type === 'Corridor') return []
+              return getFurniturePaths(r).map((d, i) => (
+                <path key={`fur-${r.id}-${i}`} d={d}
+                  stroke="rgba(0,0,0,0.42)" strokeWidth={1.1} fill="none"
+                  strokeLinecap="round" strokeLinejoin="round"
+                  style={{ pointerEvents:'none' }} />
+              ))
+            })}
+
+            {/* ── 3. Walls + door arcs + sliding doors (restored from WallOverlay) ── */}
+            {rooms.flatMap(room => {
+              const isAlfresco = room.type === 'Alfresco'
+              const door = room.type === 'Corridor' ? null : doorSideFor(room, rooms)
+              const els = []
+              ;['N','S','E','W'].forEach(side => {
+                const adjRoom = findAdjRoom(room, side, rooms)
+                const isOpen  = adjRoom && openWalls.has(wallKey(room.id, adjRoom.id))
+
+                if (isOpen) {
+                  // Sliding door symbol for alfresco ↔ living/dining
+                  const isSld = (side === 'N' || side === 'S') &&
+                    ((room.type === 'Alfresco' && (adjRoom.type === 'Living Room' || adjRoom.type === 'Dining Room')) ||
+                     (adjRoom.type === 'Alfresco' && (room.type === 'Living Room' || room.type === 'Dining Room')))
+                  if (isSld) {
+                    const wy = side === 'N' ? room.y : room.y + room.h
+                    const x1 = Math.max(room.x, adjRoom.x), x2 = Math.min(room.x + room.w, adjRoom.x + adjRoom.w)
+                    const mid = (x1 + x2) / 2
+                    els.push(
+                      <line key={`sd1-${room.id}-${side}`} x1={x1} y1={wy} x2={mid} y2={wy}
+                        stroke="#7ab87a" strokeWidth={4} strokeLinecap="square" style={{ pointerEvents:'none' }} />,
+                      <line key={`sd2-${room.id}-${side}`} x1={mid} y1={wy} x2={x2} y2={wy}
+                        stroke="#7ab87a" strokeWidth={4} strokeLinecap="square" strokeDasharray="8 0" opacity={0.5} style={{ pointerEvents:'none' }} />
+                    )
+                  }
+                  return  // no wall drawn for open plan sections
+                }
+
+                const sw = isAlfresco ? 2 : adjRoom ? WALL_INT : WALL_EXT
+                els.push(
+                  <path key={`w-${room.id}-${side}`}
+                    d={wallPath(room, side, door)}
+                    stroke={isAlfresco ? '#7ab87a' : '#1c1c1c'}
+                    strokeWidth={sw} strokeLinecap="square" fill="none"
+                    strokeDasharray={isAlfresco ? '10 6' : undefined}
+                    style={{ pointerEvents:'none' }} />
+                )
+              })
+              if (door) els.push(
+                <path key={`arc-${room.id}`}
+                  d={doorArcPath(room, door)}
+                  stroke="#1c1c1c" strokeWidth={1.2} strokeLinecap="round" fill="none"
+                  style={{ pointerEvents:'none' }} />
+              )
+              return els
+            })}
+
+            {/* ── 4. Window marks (new: double-glazing on exterior walls) ── */}
+            {rooms.flatMap(r => windowMarksFor(r))}
+
+            {/* ── 5. Room labels: name · dimensions · cost · tier ── */}
+            {rooms.map(r => {
+              if (r.type === 'Corridor') return null
+              const isHov = fpHoveredRoom === r.stableId
+              const cx = r.x + r.w / 2, cy = r.y + r.h / 2
+              const wM = pxToM(r.w), hM = pxToM(r.h)
+              const roomCost = costFn(r)
+              const narrow = r.w < 100 || r.h < 70
+
+              if (narrow) return (
+                <text key={`lbl-${r.id}`} x={cx} y={cy}
+                  textAnchor="middle" dominantBaseline="middle"
+                  fontSize="9" fontWeight="600" fill={isHov ? '#1A3AE5' : '#333'}
+                  fontFamily="Inter,system-ui,sans-serif"
+                  style={{ pointerEvents:'none', userSelect:'none' }}>
+                  {r.type}
+                </text>
+              )
+
+              const LH = 13
+              const startY = cy - LH * 1.5
+
+              return (
+                <g key={`lbl-${r.id}`} style={{ pointerEvents:'none', userSelect:'none' }}>
+                  <text x={cx} y={startY}
+                    textAnchor="middle" dominantBaseline="middle"
+                    fontSize="11" fontWeight="700" fill={isHov ? '#1A3AE5' : '#111'}
+                    fontFamily="Inter,system-ui,sans-serif">
+                    {r.type}
+                  </text>
+                  <text x={cx} y={startY + LH}
+                    textAnchor="middle" dominantBaseline="middle"
+                    fontSize="9" fill="#888" fontFamily="Inter,system-ui,sans-serif">
+                    {wM} × {hM}m
+                  </text>
+                  <text x={cx} y={startY + LH * 2}
+                    textAnchor="middle" dominantBaseline="middle"
+                    fontSize="9.5" fill={isHov ? '#1A3AE5' : '#444'} fontFamily="Inter,system-ui,sans-serif">
+                    {fmtAUD(roomCost)}
+                  </text>
+                  <text x={cx} y={startY + LH * 3}
+                    textAnchor="middle" dominantBaseline="middle"
+                    fontSize="8.5" fill="#9BA3AF" fontFamily="Inter,system-ui,sans-serif">
+                    Standard
+                  </text>
+                </g>
+              )
+            })}
+
+            {/* ── 6. Dimension lines (restored from DimensionLines) ── */}
+            <g>
+              <line x1={minX} y1={minY-dOff} x2={maxX} y2={minY-dOff} stroke={lc} strokeWidth={1} />
+              <line x1={minX} y1={minY-dOff-tL} x2={minX} y2={minY-dOff+tL} stroke={lc} strokeWidth={1} />
+              <line x1={maxX} y1={minY-dOff-tL} x2={maxX} y2={minY-dOff+tL} stroke={lc} strokeWidth={1} />
+              <line x1={minX} y1={minY} x2={minX} y2={minY-dOff+2} stroke={lc} strokeWidth={0.5} strokeDasharray="3 3" />
+              <line x1={maxX} y1={minY} x2={maxX} y2={minY-dOff+2} stroke={lc} strokeWidth={0.5} strokeDasharray="3 3" />
+              <text x={(minX+maxX)/2} y={minY-dOff-8} textAnchor="middle" fontSize="11" fill={tc}
+                fontFamily="system-ui,sans-serif" fontWeight="600">{W}m</text>
+              <line x1={minX-dOff} y1={minY} x2={minX-dOff} y2={maxY} stroke={lc} strokeWidth={1} />
+              <line x1={minX-dOff-tL} y1={minY} x2={minX-dOff+tL} y2={minY} stroke={lc} strokeWidth={1} />
+              <line x1={minX-dOff-tL} y1={maxY} x2={minX-dOff+tL} y2={maxY} stroke={lc} strokeWidth={1} />
+              <line x1={minX} y1={minY} x2={minX-dOff+2} y2={minY} stroke={lc} strokeWidth={0.5} strokeDasharray="3 3" />
+              <line x1={minX} y1={maxY} x2={minX-dOff+2} y2={maxY} stroke={lc} strokeWidth={0.5} strokeDasharray="3 3" />
+              <text x={minX-dOff-14} y={(minY+maxY)/2} textAnchor="middle" fontSize="11" fill={tc}
+                fontFamily="system-ui,sans-serif" fontWeight="600"
+                transform={`rotate(-90,${minX-dOff-14},${(minY+maxY)/2})`}>{H}m</text>
+            </g>
+
+            {/* ── 7. North arrow (restored from SiteLayer) ── */}
+            <g transform={`translate(${maxX+30},${minY+20})`}>
+              <line x1={0} y1={14} x2={0} y2={-14} stroke="#1a3a5c" strokeWidth={1.4} />
+              <polygon points="0,-16 -5,-5 5,-5" fill="#1a3a5c" />
+              <polygon points="0,16 -5,5 5,5" fill="none" stroke="#1a3a5c" strokeWidth={1.2} />
+              <text x={0} y={26} textAnchor="middle" fontSize={9} fill="#1a3a5c"
+                fontWeight="700" fontFamily="system-ui,sans-serif">N</text>
+            </g>
+
+            {/* ── 8. Transparent hover targets on top ── */}
+            {rooms.map(r => (
+              <rect key={`hover-${r.id}`}
+                x={r.x} y={r.y} width={r.w} height={r.h}
+                fill="transparent"
+                onMouseEnter={() => onHover(r.stableId)}
+                onMouseLeave={onLeave}
+                style={{ cursor:'pointer' }} />
+            ))}
+
+          </svg>
         </div>
       </div>
     </div>
   )
 }
 
-// ─── FloorPlanClientPlaceholder: shown when no template chosen yet ────────────
+// ─── FloorPlanClientPlaceholder: shown before builder picks a plan ────────────
 function FloorPlanClientPlaceholder() {
   return (
     <div className="flex-1 flex items-center justify-center p-8">
