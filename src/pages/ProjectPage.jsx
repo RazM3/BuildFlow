@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { exportQuotePDF } from '../lib/generatePDF'
+import { FLOOR_PLAN_TEMPLATES } from '../components/FloorPlanTemplates'
 
 // ─── constants ────────────────────────────────────────────────────────────────
 const GRID = 20
@@ -742,13 +743,9 @@ export default function ProjectPage({ clientOnly = false }) {
   const [highlightId,   setHighlightId]   = useState(null)
 
   // ── floor plan state
-  const [floorPlanUrl,  setFloorPlanUrl]  = useState(null)
-  const [pins,          setPins]          = useState([])
-  const [fpTab,         setFpTab]         = useState(false)
-  const [activePinId,   setActivePinId]   = useState(null)
-  const [fpUploading,   setFpUploading]   = useState(false)
-  const [editingPinId,  setEditingPinId]  = useState(null)
-  const [editingPinLbl, setEditingPinLbl] = useState('')
+  const [fpTab,             setFpTab]             = useState(false)
+  const [floorPlanTemplate, setFloorPlanTemplate] = useState(null)
+  const [fpHoveredRoom,     setFpHoveredRoom]     = useState(null)
 
   const canvasRef     = useRef(null)
   const dragRef       = useRef(null)
@@ -848,8 +845,8 @@ export default function ProjectPage({ clientOnly = false }) {
         if (data.floor_type)      setFloorType(data.floor_type)
         if (data.client_style)    setStyle(data.client_style)
         if (data.client_budget)   setBudget(data.client_budget)
-        if (data.client_finishes) setFinishes(data.client_finishes)
-        if (data.floor_plan_image_url) setFloorPlanUrl(data.floor_plan_image_url)
+        if (data.client_finishes)     setFinishes(data.client_finishes)
+        if (data.floor_plan_template) setFloorPlanTemplate(data.floor_plan_template)
       }
       // Load messages from dedicated table
       const { data: msgs } = await supabase
@@ -861,13 +858,6 @@ export default function ProjectPage({ clientOnly = false }) {
         setMessages(msgs)
         setSeenBuilderMsgs(msgs.filter(m => m.sender_role === 'builder').length)
       }
-      // Load floor plan pins
-      const { data: pinsData } = await supabase
-        .from('floor_plan_pins')
-        .select('*')
-        .eq('project_id', id)
-        .order('created_at', { ascending: true })
-      if (pinsData) setPins(pinsData)
       setLoading(false)
       setSaveStatus('saved')
       setTimeout(() => { hasLoadedRef.current = true }, 100)
@@ -1003,20 +993,6 @@ export default function ProjectPage({ clientOnly = false }) {
       .subscribe()
     channels.push(msgChannel)
 
-    // ── real-time floor plan pins
-    const pinsChannel = supabase.channel(`pins:${id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'floor_plan_pins', filter: `project_id=eq.${id}` }, payload => {
-        if (payload.eventType === 'INSERT') {
-          setPins(prev => prev.some(p => p.id === payload.new.id) ? prev : [...prev, payload.new])
-        } else if (payload.eventType === 'UPDATE') {
-          setPins(prev => prev.map(p => p.id === payload.new.id ? payload.new : p))
-        } else if (payload.eventType === 'DELETE') {
-          setPins(prev => prev.filter(p => p.id !== payload.old.id))
-        }
-      })
-      .subscribe()
-    channels.push(pinsChannel)
-
     // ── builder: live room/material updates from client
     if (!clientOnly) {
       const dataChannel = supabase.channel(`db:project:${id}`)
@@ -1056,42 +1032,12 @@ export default function ProjectPage({ clientOnly = false }) {
     setDetailSaving(false)
   }
 
-  // ── floor plan upload
-  async function handleFloorPlanUpload(file) {
-    if (!file || !file.type.startsWith('image/')) return
-    setFpUploading(true)
-    const ext = file.name.split('.').pop()
-    const path = `${id}.${ext}`
-    const { error: upErr } = await supabase.storage
-      .from('floor-plans')
-      .upload(path, file, { upsert: true, contentType: file.type })
-    if (upErr) { setFpUploading(false); showToast('Upload failed'); return }
-    const { data: urlData } = supabase.storage.from('floor-plans').getPublicUrl(path)
-    const url = `${urlData.publicUrl}?t=${Date.now()}`
-    await supabase.from('projects').update({ floor_plan_image_url: urlData.publicUrl }).eq('id', id)
-    setFloorPlanUrl(url)
-    setFpUploading(false)
-  }
-
-  // ── pin management
-  async function addPin(xPct, yPct) {
-    const { data } = await supabase
-      .from('floor_plan_pins')
-      .insert({ project_id: id, label: 'Pin', x_pct: xPct, y_pct: yPct })
-      .select().single()
-    if (data) { setEditingPinId(data.id); setEditingPinLbl('Pin') }
-  }
-  async function savePin(pinId, label) {
-    const trimmed = label.trim() || 'Pin'
-    await supabase.from('floor_plan_pins').update({ label: trimmed }).eq('id', pinId)
-    setEditingPinId(null); setEditingPinLbl('')
-  }
-  async function deletePin(pinId) {
-    setEditingPinId(null)
-    await supabase.from('floor_plan_pins').delete().eq('id', pinId)
-  }
-  function startEditPin(pinId, currentLabel) {
-    setEditingPinId(pinId); setEditingPinLbl(currentLabel)
+  // ── floor plan template
+  async function chooseFloorPlanTemplate(templateId) {
+    setFloorPlanTemplate(templateId)
+    if (!isNew) {
+      await supabase.from('projects').update({ floor_plan_template: templateId }).eq('id', id)
+    }
   }
 
   // ── PDF export
@@ -1805,27 +1751,19 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
           )}
 
           {fpTab ? (
-            (!clientOnly && view === 'builder') ? (
-              <FloorPlanBuilder
-                imageUrl={floorPlanUrl}
-                pins={pins}
-                uploading={fpUploading}
-                onUpload={handleFloorPlanUpload}
-                onAddPin={addPin}
-                onDeletePin={deletePin}
-                editingPinId={editingPinId}
-                editingPinLbl={editingPinLbl}
-                setEditingPinLbl={setEditingPinLbl}
-                onSavePin={savePin}
-                onStartEditPin={startEditPin}
+            floorPlanTemplate ? (
+              <FloorPlanCanvas
+                templateId={floorPlanTemplate}
+                hoveredRoom={fpHoveredRoom}
+                onHover={setFpHoveredRoom}
+                onLeave={() => setFpHoveredRoom(null)}
+                builderMode={!clientOnly && view === 'builder'}
+                onChangeTemplate={() => setFloorPlanTemplate(null)}
               />
+            ) : (!clientOnly && view === 'builder') ? (
+              <FloorPlanPicker onSelect={chooseFloorPlanTemplate} />
             ) : (
-              <FloorPlanViewer
-                imageUrl={floorPlanUrl}
-                pins={pins}
-                activePinId={activePinId}
-                setActivePinId={setActivePinId}
-              />
+              <FloorPlanClientPlaceholder />
             )
           ) : (
             <div className="flex-1 overflow-auto">
@@ -3707,226 +3645,146 @@ const IconZoomIn  = () => <svg width="13" height="13" viewBox="0 0 13 13" fill="
 const IconZoomOut = () => <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1.4"/><path d="M9 9l2.5 2.5M4 5.5h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
 const IconUndo    = () => <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 5h5a3.5 3.5 0 010 7H4M2 5l2.5-2.5M2 5l2.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
 
-// ─── floor plan builder (builder view) ───────────────────────────────────────
-function FloorPlanBuilder({ imageUrl, pins, uploading, onUpload, onAddPin, onDeletePin, editingPinId, editingPinLbl, setEditingPinLbl, onSavePin, onStartEditPin }) {
-  const imgRef    = useRef(null)
-  const fileRef   = useRef(null)
+// ─── floor plan components ────────────────────────────────────────────────────
 
-  function handleImageClick(e) {
-    if (editingPinId) return
-    const rect = imgRef.current.getBoundingClientRect()
-    const xPct = ((e.clientX - rect.left) / rect.width) * 100
-    const yPct = ((e.clientY - rect.top) / rect.height) * 100
-    onAddPin(xPct, yPct)
-  }
-
-  if (!imageUrl) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div
-          onClick={() => !uploading && fileRef.current?.click()}
-          className="flex flex-col items-center gap-4 rounded-2xl px-12 py-10 cursor-pointer transition"
-          style={{ border: '2px dashed var(--border)' }}
-          onMouseEnter={e => e.currentTarget.style.borderColor = '#1A3AE5'}
-          onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
-          onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = '#1A3AE5' }}
-          onDragLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
-          onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) onUpload(f) }}
-        >
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
-            style={{ background: 'rgba(26,58,229,0.06)', border: '1px solid rgba(26,58,229,0.12)' }}>
-            {uploading ? (
-              <div className="w-5 h-5 border-2 border-[#1A3AE5] border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#1A3AE5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M11 15V4M7 8l4-4 4 4"/><path d="M4 17h14"/>
-              </svg>
-            )}
-          </div>
-          <div className="text-center">
-            <p className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
-              {uploading ? 'Uploading…' : 'Upload floor plan'}
-            </p>
-            <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>PNG or JPG · drag and drop or click</p>
-          </div>
-        </div>
-        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/jpg" className="hidden"
-          onChange={e => { const f = e.target.files[0]; if (f) onUpload(f); e.target.value = '' }} />
-      </div>
-    )
-  }
-
+// ─── FloorPlanPicker: template selection screen (builder) ─────────────────────
+function FloorPlanPicker({ onSelect }) {
+  const [selected, setSelected] = useState(null)
   return (
-    <div className="flex-1 overflow-auto flex flex-col">
-      {/* toolbar row */}
-      <div className="shrink-0 px-4 py-2 flex items-center gap-3" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-secondary)' }}>
-        <p className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
-          Click anywhere on the image to drop a pin. Click a pin label to rename it.
-        </p>
-        <button
-          onClick={() => fileRef.current?.click()}
-          className="ml-auto flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer"
-          style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor='rgba(0,0,0,0.2)'; e.currentTarget.style.color='var(--text-primary)' }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor='var(--border)'; e.currentTarget.style.color='var(--text-secondary)' }}>
-          <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 8V2M3 4.5l2.5-2.5 2.5 2.5M2 9h7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          Replace image
-        </button>
-        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/jpg" className="hidden"
-          onChange={e => { const f = e.target.files[0]; if (f) onUpload(f); e.target.value = '' }} />
-      </div>
-      {/* image + pins */}
-      <div className="flex-1 overflow-auto flex items-start justify-center p-6">
-        <div className="relative inline-block" style={{ maxWidth: '100%' }}>
-          <img
-            ref={imgRef}
-            src={imageUrl}
-            alt="Floor plan"
-            onClick={handleImageClick}
-            draggable={false}
-            className="block rounded-xl select-none"
-            style={{ maxWidth: '100%', maxHeight: 'calc(100vh - 12rem)', cursor: 'crosshair',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.08), 0 4px 20px rgba(0,0,0,0.1)' }}
-          />
-          {pins.map(pin => (
-            <PinMarker
-              key={pin.id}
-              pin={pin}
-              builderMode
-              isEditing={pin.id === editingPinId}
-              editLabel={editingPinLbl}
-              setEditLabel={setEditingPinLbl}
-              onSave={onSavePin}
-              onStartEdit={onStartEditPin}
-              onDelete={onDeletePin}
-            />
-          ))}
+    <div className="flex-1 flex flex-col overflow-auto">
+      <div className="max-w-4xl mx-auto w-full px-8 py-8">
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
+            Choose a floor plan
+          </h2>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+            Select a template to display on this project. Hover a room to see its name.
+          </p>
         </div>
-      </div>
-    </div>
-  )
-}
 
-// ─── floor plan viewer (client view) ─────────────────────────────────────────
-function FloorPlanViewer({ imageUrl, pins, activePinId, setActivePinId }) {
-  if (!imageUrl) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
-            style={{ background: 'rgba(0,0,0,0.04)', border: '1px solid var(--border)' }}>
-            <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="1.4" strokeLinecap="round">
-              <rect x="2" y="2" width="18" height="18" rx="2"/><path d="M2 8h18M8 8v12"/>
-            </svg>
-          </div>
-          <p className="font-semibold text-sm" style={{ color: 'var(--text-tertiary)' }}>Floor plan coming soon</p>
-          <p className="text-xs" style={{ color: 'rgba(0,0,0,0.2)' }}>Your builder will upload it shortly</p>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex-1 overflow-auto flex items-start justify-center p-6"
-      onClick={() => setActivePinId(null)}>
-      <div className="relative inline-block" style={{ maxWidth: '100%' }}>
-        <img
-          src={imageUrl}
-          alt="Floor plan"
-          draggable={false}
-          className="block rounded-xl select-none"
-          style={{ maxWidth: '100%', maxHeight: 'calc(100vh - 10rem)',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.08), 0 4px 20px rgba(0,0,0,0.1)' }}
-        />
-        {pins.map(pin => (
-          <PinMarker
-            key={pin.id}
-            pin={pin}
-            builderMode={false}
-            isActive={pin.id === activePinId}
-            onTap={e => { e.stopPropagation(); setActivePinId(pin.id === activePinId ? null : pin.id) }}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// ─── pin marker (shared) ──────────────────────────────────────────────────────
-function PinMarker({ pin, builderMode, isEditing, editLabel, setEditLabel, onSave, onStartEdit, onDelete, isActive, onTap }) {
-  const inputRef = useRef(null)
-  useEffect(() => { if (isEditing) inputRef.current?.focus() }, [isEditing])
-
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        left: `${pin.x_pct}%`,
-        top: `${pin.y_pct}%`,
-        transform: 'translate(-50%, -100%)',
-        zIndex: 20,
-        pointerEvents: 'auto',
-      }}
-    >
-      {builderMode ? (
-        <div className="flex flex-col items-center gap-0.5" style={{ userSelect: 'none' }}>
-          {/* Label / edit input */}
-          <div className="flex items-center gap-1 rounded-lg px-2 py-1 shadow-sm"
-            style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
-            {isEditing ? (
-              <input
-                ref={inputRef}
-                value={editLabel}
-                onChange={e => setEditLabel(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') { e.preventDefault(); onSave(pin.id, editLabel) }
-                  if (e.key === 'Escape') onSave(pin.id, pin.label)
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+          {FLOOR_PLAN_TEMPLATES.map(t => {
+            const isSelected = selected === t.id
+            return (
+              <button
+                key={t.id}
+                onClick={() => setSelected(t.id)}
+                className="text-left rounded-2xl transition cursor-pointer"
+                style={{
+                  border: isSelected ? '2px solid #1A3AE5' : '2px solid var(--border)',
+                  background: isSelected ? 'rgba(26,58,229,0.03)' : 'var(--bg-card)',
+                  boxShadow: isSelected ? '0 0 0 4px rgba(26,58,229,0.08)' : '0 1px 3px rgba(0,0,0,0.04)',
+                  padding: 0, outline: 'none',
                 }}
-                onBlur={() => onSave(pin.id, editLabel)}
-                className="text-[11px] font-semibold outline-none bg-transparent"
-                style={{ color: 'var(--text-primary)', width: Math.max(40, editLabel.length * 7) }}
-              />
-            ) : (
-              <span
-                onClick={() => onStartEdit(pin.id, pin.label)}
-                className="text-[11px] font-semibold cursor-text"
-                style={{ color: 'var(--text-primary)' }}
-                title="Click to rename"
-              >{pin.label}</span>
-            )}
-            <button
-              onClick={() => onDelete(pin.id)}
-              className="w-4 h-4 flex items-center justify-center rounded transition cursor-pointer"
-              style={{ color: 'var(--text-tertiary)' }}
-              onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
-              onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}>
-              <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 1l6 6M7 1L1 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-            </button>
+              >
+                {/* SVG preview */}
+                <div className="rounded-t-xl overflow-hidden px-4 pt-4 pb-3" style={{ background: 'white' }}>
+                  <t.Component hoveredRoom={null} onHover={() => {}} onLeave={() => {}} />
+                </div>
+                {/* Label row */}
+                <div className="px-4 py-3 flex items-center justify-between"
+                  style={{ borderTop: '1px solid var(--border)' }}>
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t.label}</p>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{t.size}</p>
+                  </div>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${
+                    isSelected ? 'border-[#1A3AE5] bg-[#1A3AE5]' : 'border-gray-300'
+                  }`}>
+                    {isSelected && (
+                      <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                        <path d="M1.5 4.5l2 2 4-4" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            onClick={() => selected && onSelect(selected)}
+            disabled={!selected}
+            className="btn-glow text-white text-sm font-semibold px-6 py-2.5 rounded-xl cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+            style={{ background: 'var(--accent-blue)' }}
+          >
+            Use this template
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── FloorPlanCanvas: renders chosen template with room hover ─────────────────
+function FloorPlanCanvas({ templateId, hoveredRoom, onHover, onLeave, builderMode, onChangeTemplate }) {
+  const tmpl = FLOOR_PLAN_TEMPLATES.find(t => t.id === templateId)
+  if (!tmpl) return null
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* toolbar */}
+      <div className="h-9 shrink-0 px-4 flex items-center gap-3"
+        style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)' }}>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{tmpl.label}</span>
+          <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>·</span>
+          <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{tmpl.size}</span>
+        </div>
+        {hoveredRoom && (
+          <div className="flex items-center gap-1.5 rounded-full px-2.5 py-1 fade-up"
+            style={{ background: 'rgba(26,58,229,0.08)', border: '1px solid rgba(26,58,229,0.15)' }}>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#1A3AE5' }} />
+            <span className="text-[11px] font-semibold capitalize" style={{ color: '#1A3AE5' }}>
+              {hoveredRoom.replace(/-/g, ' ')}
+            </span>
           </div>
-          {/* Pin stem + dot */}
-          <div className="w-px h-2" style={{ background: '#1A3AE5' }} />
-          <div className="w-3 h-3 rounded-full border-2 border-white shadow-md" style={{ background: '#1A3AE5' }} />
+        )}
+        {builderMode && (
+          <button
+            onClick={onChangeTemplate}
+            className="ml-auto text-xs font-semibold px-3 py-1 rounded-lg transition cursor-pointer"
+            style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor='rgba(0,0,0,0.2)'; e.currentTarget.style.color='var(--text-primary)' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor='var(--border)'; e.currentTarget.style.color='var(--text-secondary)' }}
+          >
+            Change template
+          </button>
+        )}
+      </div>
+
+      {/* SVG canvas */}
+      <div className="flex-1 overflow-auto flex items-center justify-center p-6">
+        <div className="w-full max-w-3xl rounded-2xl bg-white p-6"
+          style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06), 0 8px 32px rgba(0,0,0,0.08)', border: '1px solid var(--border)' }}>
+          <tmpl.Component
+            hoveredRoom={hoveredRoom}
+            onHover={onHover}
+            onLeave={onLeave}
+          />
         </div>
-      ) : (
-        <div className="flex flex-col items-center gap-0.5 cursor-pointer" onClick={onTap}>
-          {/* Popup — shown when active */}
-          {isActive && (
-            <div className="rounded-xl px-3 py-2 shadow-lg mb-0.5 modal-enter"
-              style={{
-                background: 'var(--bg-card)',
-                border: '1px solid var(--border)',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-                whiteSpace: 'nowrap',
-              }}>
-              <p className="text-[12px] font-semibold" style={{ color: 'var(--text-primary)' }}>{pin.label}</p>
-            </div>
-          )}
-          {/* Pin stem + dot */}
-          <div className="w-px h-2" style={{ background: '#1A3AE5' }} />
-          <div className={`w-4 h-4 rounded-full border-2 border-white shadow-md transition-transform ${isActive ? 'scale-125' : 'hover:scale-110'}`}
-            style={{ background: '#1A3AE5' }} />
+      </div>
+    </div>
+  )
+}
+
+// ─── FloorPlanClientPlaceholder: shown when no template chosen yet ────────────
+function FloorPlanClientPlaceholder() {
+  return (
+    <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex flex-col items-center gap-3 text-center">
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+          style={{ background: 'rgba(0,0,0,0.04)', border: '1px solid var(--border)' }}>
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="1.4" strokeLinecap="round">
+            <rect x="2" y="2" width="18" height="18" rx="2"/>
+            <path d="M2 8h18M8 8v12"/>
+          </svg>
         </div>
-      )}
+        <p className="font-semibold text-sm" style={{ color: 'var(--text-tertiary)' }}>Floor plan coming soon</p>
+        <p className="text-xs" style={{ color: 'rgba(0,0,0,0.2)' }}>Your builder will add it shortly</p>
+      </div>
     </div>
   )
 }
