@@ -9,18 +9,18 @@
 }
 
 :root {
-  --bg-primary:    #0a0a0f;
-  --bg-secondary:  #111118;
-  --bg-card:       #16161f;
-  --bg-canvas:     #0d0d14;
-  --border:        rgba(255,255,255,0.08);
-  --accent-blue:   #4f8ef7;
-  --accent-purple: #6c63ff;
-  --text-primary:  #ffffff;
-  --text-secondary: rgba(255,255,255,0.6);
-  --text-tertiary:  rgba(255,255,255,0.35);
-  --success:       #1fd8a4;
-  --navy:          #2d5a9e;
+  --bg-primary:     #FFFFFF;
+  --bg-secondary:   #F7F8FA;
+  --bg-card:        #FFFFFF;
+  --bg-canvas:      #F7F8FA;
+  --border:         #E6E8EC;
+  --accent-blue:    #1A3AE5;
+  --accent-purple:  #6c63ff;
+  --text-primary:   #0A0F1E;
+  --text-secondary: #5A6472;
+  --text-tertiary:  #9BA3AF;
+  --success:        #059669;
+  --navy:           #1A3AE5;
 }
 
 body {
@@ -33,7 +33,7 @@ body {
 
 /* ── input helper ── */
 .input-dark {
-  background: var(--bg-secondary);
+  background: #FFFFFF;
   border: 1px solid var(--border);
   color: var(--text-primary);
   outline: none;
@@ -44,15 +44,16 @@ body {
 }
 .input-dark:focus {
   border-color: var(--accent-blue);
-  box-shadow: 0 0 0 2px rgba(79,142,247,0.3);
+  box-shadow: 0 0 0 3px rgba(26,58,229,0.08);
 }
 
-/* ── button glow helper ── */
+/* ── button helper ── */
 .btn-glow {
-  transition: box-shadow 150ms ease, background 150ms ease;
+  transition: opacity 150ms ease, box-shadow 150ms ease, background 150ms ease;
 }
 .btn-glow:hover {
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12), 0 0 12px rgba(79,142,247,0.25);
+  opacity: 0.92;
+  box-shadow: 0 4px 16px rgba(26,58,229,0.2);
 }
 
 /* ── animations ── */
@@ -77,14 +78,14 @@ body {
 .fade-up     { animation: fadeUp  0.2s  ease-out both; }
 
 .skeleton {
-  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%);
+  background: linear-gradient(90deg, #F0F1F3 25%, #E6E8EC 50%, #F0F1F3 75%);
   background-size: 400px 100%;
   animation: shimmer 1.4s ease-in-out infinite;
 }
 
 @keyframes ai-pulse {
-  0%   { box-shadow: 0 0 0 0 rgba(79,142,247,0.55); }
-  50%  { box-shadow: 0 0 0 12px rgba(79,142,247,0); }
-  100% { box-shadow: 0 0 0 0 rgba(79,142,247,0); }
+  0%   { box-shadow: 0 0 0 0 rgba(26,58,229,0.4); }
+  50%  { box-shadow: 0 0 0 12px rgba(26,58,229,0); }
+  100% { box-shadow: 0 0 0 0 rgba(26,58,229,0); }
 }
 .ai-highlight { animation: ai-pulse 0.9s ease-out 3; }

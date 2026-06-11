@@ -432,7 +432,7 @@ function ClientAIPanel({ messages, loading, input, setInput, onSend, onClose, su
   return (
     <div className="h-full flex flex-col relative overflow-hidden" style={{ width, background: 'var(--bg-card)', borderLeft: '1px solid var(--border)' }}>
       {/* Resize drag handle */}
-      <div className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10 hover:bg-[#4f8ef7]/20 transition"
+      <div className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10 hover:bg-[#1A3AE5]/20 transition"
         onMouseDown={onResizeStart} />
 
       {/* Header */}
@@ -448,9 +448,9 @@ function ClientAIPanel({ messages, loading, input, setInput, onSend, onClose, su
           </div>
         </div>
         <button onClick={onClose} className="transition cursor-pointer p-1 rounded-lg"
-          style={{ color: 'rgba(255,255,255,0.4)' }}
-          onMouseEnter={e => { e.currentTarget.style.color='rgba(255,255,255,0.8)'; e.currentTarget.style.background='rgba(255,255,255,0.08)' }}
-          onMouseLeave={e => { e.currentTarget.style.color='rgba(255,255,255,0.4)'; e.currentTarget.style.background='' }}>
+          style={{ color: 'var(--text-tertiary)' }}
+          onMouseEnter={e => { e.currentTarget.style.color='var(--text-primary)'; e.currentTarget.style.background='var(--bg-secondary)' }}
+          onMouseLeave={e => { e.currentTarget.style.color='var(--text-tertiary)'; e.currentTarget.style.background='' }}>
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
             <path d="M2 2l8 8M10 2L2 10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
           </svg>
@@ -462,7 +462,7 @@ function ClientAIPanel({ messages, loading, input, setInput, onSend, onClose, su
         {messages.length === 0 && !loading && (
           <div className="text-center py-10 px-4">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-              style={{ background: 'rgba(79,142,247,0.1)' }}>
+              style={{ background: 'rgba(26,58,229,0.07)' }}>
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
                 <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke="var(--accent-blue)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
@@ -481,7 +481,7 @@ function ClientAIPanel({ messages, loading, input, setInput, onSend, onClose, su
             )}
             <div className="max-w-[84%] rounded-2xl px-3 py-2 text-[11px] leading-relaxed"
               style={{
-                background: m.role === 'user' ? 'var(--accent-blue)' : 'rgba(255,255,255,0.08)',
+                background: m.role === 'user' ? 'var(--accent-blue)' : 'var(--bg-secondary)',
                 color: 'var(--text-primary)',
                 borderRadius: m.role === 'user' ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
               }}>
@@ -495,11 +495,11 @@ function ClientAIPanel({ messages, loading, input, setInput, onSend, onClose, su
               style={{ background: 'linear-gradient(135deg, var(--accent-blue), var(--accent-purple))' }}>
               <SparkleIcon size={8} />
             </div>
-            <div className="rounded-2xl rounded-bl-sm px-4 py-3" style={{ background: 'rgba(255,255,255,0.08)' }}>
+            <div className="rounded-2xl rounded-bl-sm px-4 py-3" style={{ background: 'var(--bg-secondary)' }}>
               <div className="flex gap-1 items-center h-3">
                 {[0, 1, 2].map(i => (
                   <div key={i} className="w-1.5 h-1.5 rounded-full"
-                    style={{ background: 'rgba(255,255,255,0.4)', animation: 'bounce 1.2s ease-in-out infinite', animationDelay: `${i * 0.2}s` }} />
+                    style={{ background: 'var(--text-tertiary)', animation: 'bounce 1.2s ease-in-out infinite', animationDelay: `${i * 0.2}s` }} />
                 ))}
               </div>
             </div>
@@ -514,9 +514,9 @@ function ClientAIPanel({ messages, loading, input, setInput, onSend, onClose, su
           {suggestions.map((s, i) => (
             <button key={i} onClick={() => onSuggestion(s)}
               className="text-[10px] rounded-full px-2.5 py-1 transition cursor-pointer leading-none"
-              style={{ color: 'var(--accent-blue)', background: 'rgba(79,142,247,0.1)', border: '1px solid rgba(79,142,247,0.2)' }}
-              onMouseEnter={e => e.currentTarget.style.background='rgba(79,142,247,0.2)'}
-              onMouseLeave={e => e.currentTarget.style.background='rgba(79,142,247,0.1)'}>
+              style={{ color: 'var(--accent-blue)', background: 'rgba(26,58,229,0.07)', border: '1px solid rgba(26,58,229,0.12)' }}
+              onMouseEnter={e => e.currentTarget.style.background='rgba(26,58,229,0.12)'}
+              onMouseLeave={e => e.currentTarget.style.background='rgba(26,58,229,0.07)'}>
               {s}
             </button>
           ))}
@@ -526,7 +526,7 @@ function ClientAIPanel({ messages, loading, input, setInput, onSend, onClose, su
       {/* Input */}
       <div className="px-3 pb-3 shrink-0">
         <div className="flex items-end gap-2 rounded-2xl px-3 py-2 transition"
-          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)' }}>
+          style={{ background: 'rgba(0,0,0,0.04)', border: '1px solid var(--border)' }}>
           <textarea
             value={input}
             onChange={e => setInput(e.target.value)}
@@ -583,7 +583,7 @@ function BuilderAIFloat({ messages, loading, input, setInput, onSend, onClose, s
     <div style={{ position: 'fixed', left: pos.x, top: pos.y, width: 400, zIndex: 200 }}
       className="bg-white rounded-2xl shadow-2xl border border-gray-100 flex flex-col overflow-hidden">
       {/* Draggable header */}
-      <div className="px-4 py-3 bg-gradient-to-r from-[#1a3a5c] to-[#1e4d7b] flex items-center justify-between cursor-move select-none"
+      <div className="px-4 py-3 bg-gradient-to-r from-[#1A3AE5] to-[#2855f5] flex items-center justify-between cursor-move select-none"
         onMouseDown={onDragStart}>
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 bg-white/20 rounded-lg flex items-center justify-center">
@@ -591,10 +591,10 @@ function BuilderAIFloat({ messages, loading, input, setInput, onSend, onClose, s
           </div>
           <div>
             <p className="text-white font-semibold text-xs">AI Cost Advisor</p>
-            <p className="text-white/50 text-[9px]">Powered by Claude</p>
+            <p className="text-[#9BA3AF] text-[9px]">Powered by Claude</p>
           </div>
         </div>
-        <button onClick={onClose} className="text-white/60 hover:text-white transition cursor-pointer"
+        <button onClick={onClose} className="text-[#9BA3AF] hover:text-gray-900 transition cursor-pointer"
           onMouseDown={e => e.stopPropagation()}>
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
             <path d="M2 2l8 8M10 2L2 10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
@@ -606,19 +606,19 @@ function BuilderAIFloat({ messages, loading, input, setInput, onSend, onClose, s
       <div className="overflow-y-auto px-3 py-3 space-y-2.5" style={{ minHeight: 200, maxHeight: 380 }}>
         {messages.length === 0 && !loading && (
           <div className="text-center py-6 px-3">
-            <p className="text-[#1a3a5c] font-semibold text-xs">Your AI cost advisor.</p>
+            <p className="text-[#1A3AE5] font-semibold text-xs">Your AI cost advisor.</p>
             <p className="text-gray-400 text-[11px] mt-1 leading-relaxed">Ask about costs, materials, value engineering, or design trade-offs.</p>
           </div>
         )}
         {messages.map(m => (
           <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} gap-1.5 items-end`}>
             {m.role === 'ai' && (
-              <div className="w-5 h-5 bg-[#1a3a5c] rounded-full flex items-center justify-center shrink-0 mb-0.5">
+              <div className="w-5 h-5 bg-[#1A3AE5] rounded-full flex items-center justify-center shrink-0 mb-0.5">
                 <SparkIcon />
               </div>
             )}
             <div className={`max-w-[84%] rounded-xl px-3 py-2 text-[11px] leading-relaxed ${
-              m.role === 'user' ? 'bg-[#1a3a5c] text-white rounded-br-sm' : 'bg-gray-100 text-gray-700 rounded-bl-sm'
+              m.role === 'user' ? 'bg-[#1A3AE5] text-white rounded-br-sm' : 'bg-gray-100 text-gray-700 rounded-bl-sm'
             }`}>
               {m.text}
             </div>
@@ -626,7 +626,7 @@ function BuilderAIFloat({ messages, loading, input, setInput, onSend, onClose, s
         ))}
         {loading && (
           <div className="flex gap-1.5 items-end">
-            <div className="w-5 h-5 bg-[#1a3a5c] rounded-full flex items-center justify-center shrink-0 mb-0.5">
+            <div className="w-5 h-5 bg-[#1A3AE5] rounded-full flex items-center justify-center shrink-0 mb-0.5">
               <SparkIcon />
             </div>
             <div className="bg-gray-100 rounded-xl rounded-bl-sm px-3 py-2.5">
@@ -647,7 +647,7 @@ function BuilderAIFloat({ messages, loading, input, setInput, onSend, onClose, s
         <div className="px-3 py-2 flex flex-wrap gap-1 border-t border-gray-50">
           {suggestions.map((s, i) => (
             <button key={i} onClick={() => onSuggestion(s)}
-              className="text-[10px] text-[#1a3a5c] bg-[#1a3a5c]/5 hover:bg-[#1a3a5c]/10 border border-[#1a3a5c]/15 rounded-full px-2 py-0.5 transition cursor-pointer">
+              className="text-[10px] text-[#1A3AE5] bg-[#1A3AE5]/5 hover:bg-[#1A3AE5]/10 border border-[#1A3AE5]/15 rounded-full px-2 py-0.5 transition cursor-pointer">
               {s}
             </button>
           ))}
@@ -656,7 +656,7 @@ function BuilderAIFloat({ messages, loading, input, setInput, onSend, onClose, s
 
       {/* Input */}
       <div className="px-3 pb-3 pt-2 border-t border-gray-50 shrink-0">
-        <div className="flex items-end gap-2 bg-gray-50 rounded-xl px-3 py-2 border border-gray-100 focus-within:border-[#1a3a5c]/30 transition">
+        <div className="flex items-end gap-2 bg-gray-50 rounded-xl px-3 py-2 border border-gray-100 focus-within:border-[#1A3AE5]/30 transition">
           <textarea
             value={input}
             onChange={e => setInput(e.target.value)}
@@ -666,7 +666,7 @@ function BuilderAIFloat({ messages, loading, input, setInput, onSend, onClose, s
             className="flex-1 text-[11px] bg-transparent outline-none resize-none text-gray-700 placeholder:text-gray-300 max-h-16"
           />
           <button onClick={() => onSend(input)} disabled={!input.trim() || loading}
-            className="w-6 h-6 bg-[#1a3a5c] hover:bg-[#243f63] disabled:opacity-30 text-white rounded-lg flex items-center justify-center transition cursor-pointer shrink-0">
+            className="w-6 h-6 bg-[#1A3AE5] hover:bg-[#1530c0] disabled:opacity-30 text-white rounded-lg flex items-center justify-center transition cursor-pointer shrink-0">
             <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
               <path d="M1.5 8.5L8.5 5L1.5 1.5V4.5L6 5L1.5 5.5V8.5Z" fill="currentColor"/>
             </svg>
@@ -932,7 +932,9 @@ export default function ProjectPage({ clientOnly = false }) {
   const [toast,           setToast]           = useState('')
   const [clientOnline,    setClientOnline]    = useState(false)
   const [clientChatOpen,  setClientChatOpen]  = useState(false)
+  const [builderChatOpen, setBuilderChatOpen] = useState(false)
   const [seenBuilderMsgs, setSeenBuilderMsgs] = useState(0)
+  const [seenClientMsgs,  setSeenClientMsgs]  = useState(0)
   const toastTimer = useRef(null)
 
   const showToast = useCallback((msg) => {
@@ -1351,7 +1353,8 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
     if (newMsg) setMessages(prev => prev.some(m => m.id === newMsg.id) ? prev : [...prev, newMsg])
   }
 
-  const clientUnread = Math.max(0, messages.filter(m => m.sender_role === 'builder').length - seenBuilderMsgs)
+  const clientUnread  = Math.max(0, messages.filter(m => m.sender_role === 'builder').length - seenBuilderMsgs)
+  const builderUnread = Math.max(0, messages.filter(m => m.sender_role === 'client').length  - seenClientMsgs)
 
   const projectName = project?.client_name || detailForm.client_name || 'Loading…'
   const projectAddr = project?.address     || detailForm.address     || ''
@@ -1371,7 +1374,7 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
         <div className="flex flex-1">
           <div className="w-[200px]" style={{ background: 'var(--bg-secondary)', borderRight: '1px solid var(--border)' }} />
           <div className="flex-1 flex items-center justify-center">
-            <div className="w-8 h-8 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(255,255,255,0.1)', borderTopColor: 'var(--accent-blue)' }} />
+            <div className="w-8 h-8 border-2 rounded-full animate-spin" style={{ borderColor: '#E6E8EC', borderTopColor: 'var(--accent-blue)' }} />
           </div>
           <div className="w-[240px]" style={{ background: 'var(--bg-card)', borderLeft: '1px solid var(--border)' }} />
         </div>
@@ -1417,7 +1420,7 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
             <div className="ml-auto flex items-center gap-2.5">
               <span className={`text-[11px] font-semibold flex items-center gap-1 transition-all ${
                 saveStatus === 'unsaved' ? 'text-amber-400' :
-                saveStatus === 'saving'  ? 'text-white/40'  :
+                saveStatus === 'saving'  ? 'text-[#9BA3AF]'  :
                 saveStatus === 'saved'   ? 'text-emerald-400' : 'opacity-0 pointer-events-none'
               }`}>
                 {saveStatus === 'unsaved' ? (
@@ -1445,8 +1448,8 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                   }}
                   className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl transition cursor-pointer border ${
                     clientChatOpen
-                      ? 'bg-[#4f8ef7] text-white border-[#4f8ef7]'
-                      : 'text-[#4f8ef7] border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20'
+                      ? 'bg-[#1A3AE5] text-white border-[#1A3AE5]'
+                      : 'text-[#1A3AE5] border-gray-200 bg-gray-50 hover:bg-gray-100 hover:border-gray-300'
                   }`}>
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                     <path d="M10.5 7a.75.75 0 01-.75.75H3.5L1.5 10V2.75A.75.75 0 012.25 2h7.5a.75.75 0 01.75.75V7z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1454,12 +1457,12 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                   Message builder
                 </button>
                 {clientUnread > 0 && (
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#111118]" />
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
                 )}
               </div>
               <button onClick={() => setAiClientOpen(o => !o)}
                 className={`flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl transition cursor-pointer shadow-sm ${
-                  aiClientOpen ? 'bg-[#4f8ef7] text-white' : 'bg-gradient-to-r from-[#4f8ef7] to-[#6c63ff] text-white hover:shadow-md hover:shadow-blue-500/25'
+                  aiClientOpen ? 'bg-[#1A3AE5] text-white' : 'bg-[#1A3AE5] text-white hover:opacity-90'
                 }`}>
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                   <path d="M6 1v2M6 9v2M1 6h2M9 6h2M2.6 2.6l1.4 1.4M8 8l1.4 1.4M9.4 2.6L8 4M4 8l-1.4 1.4" stroke="white" strokeWidth="1.3" strokeLinecap="round"/>
@@ -1472,9 +1475,9 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
           /* ── BUILDER HEADER */
           <>
             <button onClick={() => navigate('/')} className="w-7 h-7 flex items-center justify-center rounded-lg transition cursor-pointer"
-              style={{ color: 'rgba(255,255,255,0.4)' }}
-              onMouseEnter={e => { e.currentTarget.style.color='rgba(255,255,255,0.8)'; e.currentTarget.style.background='rgba(255,255,255,0.08)' }}
-              onMouseLeave={e => { e.currentTarget.style.color='rgba(255,255,255,0.4)'; e.currentTarget.style.background='' }}>
+              style={{ color: 'var(--text-tertiary)' }}
+              onMouseEnter={e => { e.currentTarget.style.color='var(--text-primary)'; e.currentTarget.style.background='var(--bg-secondary)' }}
+              onMouseLeave={e => { e.currentTarget.style.color='var(--text-tertiary)'; e.currentTarget.style.background='' }}>
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 11L5 7l4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </button>
             <div className="flex items-center gap-2 min-w-0">
@@ -1486,30 +1489,30 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                 </svg>
               </div>
               <span className="font-semibold text-sm truncate" style={{ color: 'var(--text-primary)' }}>{projectName}</span>
-              <span className="hidden md:block" style={{ color: 'rgba(255,255,255,0.15)' }}>·</span>
+              <span className="hidden md:block" style={{ color: '#C0C4CC' }}>·</span>
               <span className="text-xs hidden md:block truncate" style={{ color: 'var(--text-secondary)' }}>{projectAddr}</span>
             </div>
             <div className="ml-auto flex items-center gap-2 shrink-0">
               <span className={`text-[10px] font-medium transition-all ${
                 saveStatus === 'unsaved' ? 'text-amber-400' :
-                saveStatus === 'saving'  ? 'text-white/40'  :
+                saveStatus === 'saving'  ? 'text-[#9BA3AF]'  :
                 saveStatus === 'saved'   ? 'text-emerald-400' : 'text-transparent'
               }`}>
                 {saveStatus === 'unsaved' ? '● Unsaved' : saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? '✓ Saved' : '·'}
               </span>
               <button onClick={handleExportPDF} disabled={rooms.length === 0}
                 className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer disabled:opacity-30"
-                style={{ color: 'rgba(255,255,255,0.5)', border: '1px solid var(--border)' }}
-                onMouseEnter={e => { e.currentTarget.style.color='rgba(255,255,255,0.8)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.2)' }}
-                onMouseLeave={e => { e.currentTarget.style.color='rgba(255,255,255,0.5)'; e.currentTarget.style.borderColor='var(--border)' }}>
+                style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+                onMouseEnter={e => { e.currentTarget.style.color='var(--text-primary)'; e.currentTarget.style.borderColor='rgba(0,0,0,0.2)' }}
+                onMouseLeave={e => { e.currentTarget.style.color='var(--text-secondary)'; e.currentTarget.style.borderColor='var(--border)' }}>
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5l3 3 3-3M1 9v1a1 1 0 001 1h8a1 1 0 001-1V9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 Export PDF
               </button>
               <button onClick={() => setShowTemplates(true)}
                 className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer"
-                style={{ color: 'rgba(255,255,255,0.5)', border: '1px solid var(--border)' }}
-                onMouseEnter={e => { e.currentTarget.style.color='rgba(255,255,255,0.8)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.2)' }}
-                onMouseLeave={e => { e.currentTarget.style.color='rgba(255,255,255,0.5)'; e.currentTarget.style.borderColor='var(--border)' }}>
+                style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+                onMouseEnter={e => { e.currentTarget.style.color='var(--text-primary)'; e.currentTarget.style.borderColor='rgba(0,0,0,0.2)' }}
+                onMouseLeave={e => { e.currentTarget.style.color='var(--text-secondary)'; e.currentTarget.style.borderColor='var(--border)' }}>
                 <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1l1.2 2.4 2.6.4-1.9 1.8.5 2.6-2.4-1.3-2.4 1.3.5-2.6L2.7 3.8l2.6-.4z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/><path d="M2 10.5h9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
                 Generate floor plan
               </button>
@@ -1524,7 +1527,7 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                       }
                     }}
                     className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer border ${
-                      clientChatOpen ? 'bg-[#4f8ef7] text-white border-[#4f8ef7]' : 'text-[#4f8ef7] border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20'
+                      clientChatOpen ? 'bg-[#1A3AE5] text-white border-[#1A3AE5]' : 'text-[#1A3AE5] border-gray-200 bg-gray-50 hover:bg-gray-100 hover:border-gray-300'
                     }`}>
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                       <path d="M10.5 7a.75.75 0 01-.75.75H3.5L1.5 10V2.75A.75.75 0 012.25 2h7.5a.75.75 0 01.75.75V7z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1532,7 +1535,7 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                     Message builder
                   </button>
                   {clientUnread > 0 && (
-                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#111118]" />
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
                   )}
                 </div>
               )}
@@ -1546,29 +1549,48 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                 {copiedMsg && (
                   <div className="absolute right-0 top-9 text-white text-[11px] font-medium px-3 py-2 rounded-xl shadow-lg whitespace-nowrap z-50 flex items-center gap-2 modal-enter"
                     style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="#1fd8a4" strokeWidth="1.5"/><path d="M3.5 6l2 2 3-3" stroke="#1fd8a4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="#059669" strokeWidth="1.5"/><path d="M3.5 6l2 2 3-3" stroke="#059669" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     Client link copied!
                   </div>
                 )}
               </div>
               {view === 'builder' && (
-                <button onClick={() => setAiBuilderOpen(o => !o)}
-                  className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition cursor-pointer ${
-                    aiBuilderOpen ? 'bg-[#4f8ef7] text-white border-[#4f8ef7]' : 'text-[#4f8ef7] border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20'
-                  }`}>
-                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                    <path d="M6 1v2M6 9v2M1 6h2M9 6h2M2.6 2.6l1.4 1.4M8 8l1.4 1.4M9.4 2.6L8 4M4 8l-1.4 1.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                  </svg>
-                  AI Advisor
-                </button>
+                <>
+                  <div className="relative">
+                    <button onClick={() => {
+                        setBuilderChatOpen(o => !o)
+                        if (!builderChatOpen) setSeenClientMsgs(messages.filter(m => m.sender_role === 'client').length)
+                      }}
+                      className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition cursor-pointer ${
+                        builderChatOpen ? 'bg-[#1A3AE5] text-white border-[#1A3AE5]' : 'text-[#1A3AE5] border-gray-200 bg-gray-50 hover:bg-gray-100 hover:border-gray-300'
+                      }`}>
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                        <path d="M10.5 7a.75.75 0 01-.75.75H3.5L1.5 10V2.75A.75.75 0 012.25 2h7.5a.75.75 0 01.75.75V7z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      Message Client
+                    </button>
+                    {builderUnread > 0 && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
+                    )}
+                  </div>
+                  <button onClick={() => setAiBuilderOpen(o => !o)}
+                    className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition cursor-pointer ${
+                      aiBuilderOpen ? 'bg-[#1A3AE5] text-white border-[#1A3AE5]' : 'text-[#1A3AE5] border-gray-200 bg-gray-50 hover:bg-gray-100 hover:border-gray-300'
+                    }`}>
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                      <path d="M6 1v2M6 9v2M1 6h2M9 6h2M2.6 2.6l1.4 1.4M8 8l1.4 1.4M9.4 2.6L8 4M4 8l-1.4 1.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                    </svg>
+                    AI Advisor
+                  </button>
+                </>
               )}
-              <div className="flex items-center rounded-lg p-0.5" style={{ background: 'rgba(255,255,255,0.06)' }}>
+              <div className="flex items-center rounded-lg p-0.5" style={{ background: 'rgba(0,0,0,0.04)' }}>
                 <button onClick={() => setView('builder')}
-                  className={`px-3 py-1 text-xs font-semibold rounded-md transition cursor-pointer ${view === 'builder' ? 'bg-[#16161f] text-white shadow-sm' : 'text-white/40 hover:text-white/70'}`}>
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition cursor-pointer ${view === 'builder' ? 'bg-white text-[#0A0F1E] shadow-sm' : 'text-[#9BA3AF] hover:text-[#5A6472]'}`}>
                   Builder
                 </button>
                 <button onClick={() => setView('client')}
-                  className={`px-3 py-1 text-xs font-semibold rounded-md transition cursor-pointer ${view === 'client' ? 'bg-[#16161f] text-white shadow-sm' : 'text-white/40 hover:text-white/70'}`}>
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition cursor-pointer ${view === 'client' ? 'bg-white text-[#0A0F1E] shadow-sm' : 'text-[#9BA3AF] hover:text-[#5A6472]'}`}>
                   Preview Client
                 </button>
               </div>
@@ -1580,7 +1602,7 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
       {/* ── client-online banner (builder only) */}
       {!clientOnly && clientOnline && (
         <div className="h-7 flex items-center justify-center gap-2 shrink-0"
-          style={{ background: 'rgba(31,216,164,0.08)', borderBottom: '1px solid rgba(31,216,164,0.2)' }}>
+          style={{ background: 'rgba(5,150,105,0.08)', borderBottom: '1px solid rgba(5,150,105,0.2)' }}>
           <span className="w-2 h-2 rounded-full" style={{ background: 'var(--success)', animation: 'pulse 2s infinite' }} />
           <span className="text-[11px] font-semibold" style={{ color: 'var(--success)' }}>Client is viewing now</span>
         </div>
@@ -1593,7 +1615,7 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
         <div className={`w-[200px] shrink-0 flex flex-col overflow-hidden ${(clientOnly || view === 'client') ? 'hidden' : ''}`}
           style={{ background: 'var(--bg-secondary)', borderRight: '1px solid var(--border)' }}>
           <div className="px-4 py-3 shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
-            <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'rgba(255,255,255,0.4)' }}>Project</p>
+            <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Project</p>
             <p className="font-semibold text-sm leading-tight" style={{ color: 'var(--text-primary)' }}>{projectName}</p>
             <p className="text-[11px] mt-0.5 leading-tight" style={{ color: 'var(--text-secondary)' }}>{projectAddr}</p>
             <div className="mt-2">
@@ -1606,13 +1628,13 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
           </div>
 
           <div className="px-3 py-3 shrink-0 overflow-y-auto" style={{ maxHeight: '280px', borderBottom: '1px solid var(--border)' }}>
-            <p className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>Rooms</p>
+            <p className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: 'var(--text-tertiary)' }}>Rooms</p>
             <div className="space-y-1">
               {ROOM_DEFS.map(d => (
                 <div key={d.type} draggable onDragStart={e => e.dataTransfer.setData('room-type', d.type)}
                   className="flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-grab active:cursor-grabbing transition"
                   style={{ border: '1px solid var(--border)' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.15)'; e.currentTarget.style.background='rgba(255,255,255,0.04)' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor='#C0C4CC'; e.currentTarget.style.background='rgba(0,0,0,0.04)' }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor='var(--border)'; e.currentTarget.style.background='' }}>
                   <span className="w-3 h-3 rounded-[3px] shrink-0 border" style={{ background: d.color, borderColor: d.stroke }} />
                   <span className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>{d.type}</span>
@@ -1622,7 +1644,7 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
           </div>
 
           <div className="px-3 py-3 overflow-y-auto flex-1">
-            <p className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>Materials</p>
+            <p className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: 'var(--text-tertiary)' }}>Materials</p>
             <div className="space-y-2.5">
               <div>
                 <p className="text-[10px] mb-1" style={{ color: 'var(--text-tertiary)' }}>Wall Type</p>
@@ -1655,27 +1677,27 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
               ].map(t => (
                 <button key={t.id} title={t.label} onClick={() => setTool(t.id)}
                   className={`w-7 h-7 flex items-center justify-center rounded-md transition cursor-pointer ${
-                    tool === t.id ? 'bg-[#4f8ef7] text-white' : 'text-white/40 hover:bg-white/8 hover:text-white/70'
+                    tool === t.id ? 'bg-[#1A3AE5] text-white' : 'text-[#9BA3AF] hover:bg-gray-100 hover:text-[#5A6472]'
                   }`}>
                   {t.icon}
                 </button>
               ))}
               <div className="w-px h-4 mx-1" style={{ background: 'var(--border)' }} />
               <button onClick={() => setZoom(z => Math.min(2, +(z + 0.25).toFixed(2)))}
-                className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:bg-white/8 hover:text-white/70 transition cursor-pointer">
+                className="w-7 h-7 flex items-center justify-center rounded-md text-[#9BA3AF] hover:bg-gray-100 hover:text-[#5A6472] transition cursor-pointer">
                 <IconZoomIn />
               </button>
               <button onClick={() => setZoom(z => Math.max(0.25, +(z - 0.25).toFixed(2)))}
-                className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:bg-white/8 hover:text-white/70 transition cursor-pointer">
+                className="w-7 h-7 flex items-center justify-center rounded-md text-[#9BA3AF] hover:bg-gray-100 hover:text-[#5A6472] transition cursor-pointer">
                 <IconZoomOut />
               </button>
               <div className="w-px h-4 mx-1" style={{ background: 'var(--border)' }} />
               <button onClick={undo} disabled={!history.length}
-                className="w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:bg-white/8 hover:text-white/70 disabled:opacity-25 transition cursor-pointer">
+                className="w-7 h-7 flex items-center justify-center rounded-md text-[#9BA3AF] hover:bg-gray-100 hover:text-[#5A6472] disabled:opacity-25 transition cursor-pointer">
                 <IconUndo />
               </button>
               <div className="ml-auto flex items-center gap-3">
-                <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.3)' }}>{Math.round(zoom * 100)}%</span>
+                <span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>{Math.round(zoom * 100)}%</span>
                 {selRoom && (
                   <button onClick={delSel}
                     className="text-[10px] text-red-400 hover:text-red-300 rounded-md px-2 py-1 transition cursor-pointer"
@@ -1701,7 +1723,7 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                 style={{
                   position: 'absolute', top: 0, left: 0, width: CW, height: CH,
                   transform: `scale(${zoom})`, transformOrigin: 'top left',
-                  backgroundImage: `radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)`,
+                  backgroundImage: `radial-gradient(circle, rgba(0,0,0,0.07) 1px, transparent 1px)`,
                   backgroundSize: `10px 10px`,
                   backgroundColor: 'var(--bg-canvas)',
                 }}
@@ -1712,12 +1734,12 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                 {rooms.length === 0 && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-3">
                     <div className="w-14 h-14 border-2 border-dashed rounded-2xl flex items-center justify-center"
-                      style={{ borderColor: 'rgba(255,255,255,0.12)' }}>
-                      <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 4v14M4 11h14" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round"/></svg>
+                      style={{ borderColor: '#E6E8EC' }}>
+                      <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 4v14M4 11h14" stroke="rgba(0,0,0,0.2)" strokeWidth="2" strokeLinecap="round"/></svg>
                     </div>
                     <div className="text-center">
-                      <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.3)' }}>Drag rooms onto the canvas</p>
-                      <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.2)' }}>or load a template to get started</p>
+                      <p className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>Drag rooms onto the canvas</p>
+                      <p className="text-xs mt-1" style={{ color: 'rgba(0,0,0,0.2)' }}>or load a template to get started</p>
                     </div>
                   </div>
                 )}
@@ -1736,18 +1758,18 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                 {/* Client first-load help tooltip */}
                 {clientOnly && showHelp && rooms.length > 0 && (
                   <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-auto">
-                    <div className="text-white rounded-2xl px-5 py-3.5 shadow-2xl flex items-start gap-3 max-w-xs fade-up"
-                    style={{ background: 'var(--bg-card)', border: '1px solid rgba(79,142,247,0.3)', boxShadow: '0 4px 24px rgba(0,0,0,0.5)' }}>
+                    <div className="rounded-2xl px-5 py-3.5 flex items-start gap-3 max-w-xs fade-up"
+                    style={{ background: 'var(--bg-card)', border: '1px solid rgba(26,58,229,0.2)', boxShadow: '0 4px 24px rgba(0,0,0,0.12)' }}>
                       <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="shrink-0 mt-0.5">
-                        <circle cx="9" cy="9" r="8" stroke="white" strokeWidth="1.4" strokeOpacity="0.6"/>
-                        <path d="M9 8v5M9 5.5v1" stroke="white" strokeWidth="1.6" strokeLinecap="round"/>
+                        <circle cx="9" cy="9" r="8" stroke="#1A3AE5" strokeWidth="1.4" strokeOpacity="0.6"/>
+                        <path d="M9 8v5M9 5.5v1" stroke="#1A3AE5" strokeWidth="1.6" strokeLinecap="round"/>
                       </svg>
                       <div>
-                        <p className="font-bold text-sm">Your floor plan is ready</p>
-                        <p className="text-white/70 text-[11px] mt-1 leading-relaxed">Click any room to select and resize it, or use <strong className="text-white">Design with AI</strong> to make changes by chatting.</p>
+                        <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Your floor plan is ready</p>
+                        <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>Click any room to select and resize it, or use <strong style={{ color: 'var(--accent-blue)' }}>Design with AI</strong> to make changes by chatting.</p>
                       </div>
                       <button onClick={() => { setShowHelp(false); localStorage.setItem('bf_client_help', '1') }}
-                        className="text-white/50 hover:text-white transition cursor-pointer ml-1 shrink-0">
+                        className="text-[#9BA3AF] hover:text-gray-900 transition cursor-pointer ml-1 shrink-0">
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2L2 10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
                       </button>
                     </div>
@@ -1782,7 +1804,7 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                   {[['costs','Costs'],['details','Details']].map(([val, label]) => (
                     <button key={val} onClick={() => setRpTab(val)}
                       className={`flex-1 py-2.5 text-xs font-semibold transition cursor-pointer ${
-                        rpTab === val ? 'border-b-2 border-[#4f8ef7] text-white' : 'text-white/40 hover:text-white/70'
+                        rpTab === val ? 'border-b-2 border-[#1A3AE5] text-[#1A3AE5]' : 'text-[#9BA3AF] hover:text-[#5A6472]'
                       }`}>
                       {label}
                     </button>
@@ -1791,7 +1813,7 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                 {rpTab === 'costs' ? (
                   <BuilderPanel
                     baseCost={baseCost} withMargin={withMargin} total={total} totalSqm={totalSqm}
-                    rooms={rooms} selRoom={selRoom} messages={messages}
+                    rooms={rooms} selRoom={selRoom}
                     wallType={wallType} setWallType={setWallType}
                     floorType={floorType} setFloorType={setFloorType}
                     roofType={roofType} setRoofType={setRoofType}
@@ -1799,9 +1821,6 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
                     gstOn={gstOn} setGstOn={setGstOn}
                     builderNotes={builderNotes} setBuilderNotes={setBuilderNotes}
                     onExportPDF={handleExportPDF}
-                    clientName={projectName}
-                    msgInput={builderMsgInput} setMsgInput={setBuilderMsgInput} onSend={sendBuilderMessage}
-                    isNew={isNew}
                   />
                 ) : (
                   <DetailsPanel
@@ -1824,11 +1843,31 @@ Respond with valid JSON: {"message":"your detailed response under 120 words"}`
           </div>
         )}
 
+        {/* ── BUILDER CHAT PANEL — slides in from right, builder view only */}
+        {!clientOnly && view === 'builder' && (
+          <div style={{ width: builderChatOpen ? 260 : 0, flexShrink: 0, overflow: 'hidden', transition: 'width 200ms ease', borderLeft: builderChatOpen ? '1px solid var(--border)' : 'none' }}>
+            <ChatPanel
+              messages={messages}
+              myRole="builder"
+              title="Client chat"
+              placeholder="Message client…"
+              input={builderMsgInput}
+              setInput={setBuilderMsgInput}
+              onSend={sendBuilderMessage}
+              onClose={() => setBuilderChatOpen(false)}
+              isNew={isNew}
+            />
+          </div>
+        )}
+
         {/* ── CLIENT CHAT PANEL — slides in from right */}
         {(clientOnly || view === 'client') && (
           <div style={{ width: clientChatOpen ? 260 : 0, flexShrink: 0, overflow: 'hidden', transition: 'width 200ms ease', borderLeft: clientChatOpen ? '1px solid var(--border)' : 'none' }}>
-            <ClientChatPanel
+            <ChatPanel
               messages={messages}
+              myRole="client"
+              title="Builder chat"
+              placeholder="Message your builder…"
               input={clientMsgInput}
               setInput={setClientMsgInput}
               onSend={sendClientMessage}
@@ -1879,7 +1918,7 @@ function DetailsPanel({ form, setForm, saving, onSave }) {
   const upd = (k, v) => setForm(f => ({ ...f, [k]: v }))
   return (
     <div className="px-4 py-4 space-y-3 flex-1">
-      <p className="text-[10px] uppercase tracking-widest font-semibold mb-1" style={{ color: 'rgba(255,255,255,0.4)' }}>Project Details</p>
+      <p className="text-[10px] uppercase tracking-widest font-semibold mb-1" style={{ color: 'var(--text-tertiary)' }}>Project Details</p>
       <div>
         <label className="text-[10px] block mb-1" style={{ color: 'var(--text-tertiary)' }}>Client Name</label>
         <input value={form.client_name} onChange={e => upd('client_name', e.target.value)}
@@ -1919,10 +1958,9 @@ function DetailsPanel({ form, setForm, saving, onSave }) {
 
 // ─── builder panel ────────────────────────────────────────────────────────────
 function BuilderPanel({
-  baseCost, withMargin, total, totalSqm, rooms, selRoom, messages,
+  baseCost, withMargin, total, totalSqm, rooms, selRoom,
   wallType, setWallType, floorType, setFloorType, roofType, setRoofType,
   margin, setMargin, gstOn, setGstOn, builderNotes, setBuilderNotes, onExportPDF,
-  clientName, msgInput, setMsgInput, onSend, isNew = false,
 }) {
   const selDef = selRoom ? ROOM_DEFS.find(d => d.type === selRoom.type) : null
   const selBase = selRoom ? cost(selRoom) * (WALL_MULT[wallType]||1) * (FLOOR_MULT[floorType]||1) * (ROOF_MULT[roofType]||1) : 0
@@ -1932,15 +1970,15 @@ function BuilderPanel({
     <>
       {/* Total cost card */}
       <div className="m-3 rounded-xl px-4 py-3 shrink-0"
-        style={{ background: 'linear-gradient(135deg, rgba(79,142,247,0.2), rgba(108,99,255,0.2))', border: '1px solid rgba(79,142,247,0.3)', boxShadow: '0 0 20px rgba(79,142,247,0.1)' }}>
-        <p className="text-[10px] uppercase tracking-widest font-semibold mb-1" style={{ color: 'rgba(255,255,255,0.4)' }}>Total Project Cost</p>
+        style={{ background: 'rgba(26,58,229,0.04)', border: '1px solid rgba(26,58,229,0.12)' }}>
+        <p className="text-[10px] uppercase tracking-widest font-semibold mb-1" style={{ color: 'var(--text-tertiary)' }}>Total Project Cost</p>
         <p className="text-xl font-bold tracking-tight leading-none tabular-nums" style={{ color: 'var(--accent-blue)' }}>{fmtAUD(total)}</p>
-        <div className="text-[9px] mt-2 space-y-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>
+        <div className="text-[9px] mt-2 space-y-0.5" style={{ color: 'var(--text-tertiary)' }}>
           <div className="flex justify-between"><span>Base cost</span><span>{fmtAUD(baseCost)}</span></div>
           <div className="flex justify-between"><span>Margin ({margin}%)</span><span>+{fmtAUD(withMargin - baseCost)}</span></div>
           {gstOn && <div className="flex justify-between"><span>GST (10%)</span><span>+{fmtAUD(total - withMargin)}</span></div>}
         </div>
-        <p className="text-[9px] mt-1" style={{ color: 'rgba(255,255,255,0.2)' }}>{rooms.length} rooms · {totalSqm.toFixed(0)} m²</p>
+        <p className="text-[9px] mt-1" style={{ color: 'rgba(0,0,0,0.2)' }}>{rooms.length} rooms · {totalSqm.toFixed(0)} m²</p>
       </div>
 
       {/* Margin + GST controls */}
@@ -1954,7 +1992,7 @@ function BuilderPanel({
         <label className="flex items-center gap-2 cursor-pointer">
           <div onClick={() => setGstOn(g => !g)}
             className="w-8 h-4 rounded-full relative cursor-pointer"
-            style={{ background: gstOn ? 'var(--accent-blue)' : 'rgba(255,255,255,0.12)' }}>
+            style={{ background: gstOn ? 'var(--accent-blue)' : '#E6E8EC' }}>
             <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${gstOn ? 'translate-x-4' : 'translate-x-0.5'}`} />
           </div>
           <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>GST (10%)</span>
@@ -1963,7 +2001,7 @@ function BuilderPanel({
 
       {/* Materials */}
       <div className="px-4 py-3 space-y-2" style={{ borderBottom: '1px solid var(--border)' }}>
-        <p className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: 'rgba(255,255,255,0.4)' }}>Materials</p>
+        <p className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: 'var(--text-tertiary)' }}>Materials</p>
         {[
           { label: 'Walls',    value: wallType,  set: setWallType,  opts: WALL_OPTS,  mult: WALL_MULT  },
           { label: 'Flooring', value: floorType, set: setFloorType, opts: FLOOR_OPTS, mult: FLOOR_MULT },
@@ -1972,7 +2010,7 @@ function BuilderPanel({
           <div key={label}>
             <div className="flex items-center justify-between mb-0.5">
               <span className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>{label}</span>
-              <span className={`text-[9px] font-semibold ${mult[value] > 1 ? 'text-amber-400' : mult[value] < 1 ? 'text-emerald-400' : 'text-white/25'}`}>
+              <span className={`text-[9px] font-semibold ${mult[value] > 1 ? 'text-amber-400' : mult[value] < 1 ? 'text-emerald-400' : 'text-gray-300'}`}>
                 {mult[value] > 1 ? `+${Math.round((mult[value]-1)*100)}%` : mult[value] < 1 ? `${Math.round((mult[value]-1)*100)}%` : 'base'}
               </span>
             </div>
@@ -1986,7 +2024,7 @@ function BuilderPanel({
 
       {/* Trade breakdown */}
       <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
-        <p className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>By Trade</p>
+        <p className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: 'var(--text-tertiary)' }}>By Trade</p>
         <div className="space-y-1.5">
           {TRADES.map(t => (
             <div key={t.name} className="flex items-center justify-between">
@@ -1999,14 +2037,14 @@ function BuilderPanel({
 
       {/* Selected room */}
       <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
-        <p className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>Selected Room</p>
+        <p className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: 'var(--text-tertiary)' }}>Selected Room</p>
         {selRoom ? (
           <div className="space-y-1.5">
             <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{selRoom.type}</p>
             <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>{pxToM(selRoom.w)}m × {pxToM(selRoom.h)}m · {selSqm} m²</p>
             {selDef && <p className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>{fmtAUD(selDef.rate)}/m²{selDef.flat ? ` + ${fmtAUD(selDef.flat)} fixed` : ''}</p>}
             <div className="rounded-lg px-3 py-1.5 flex justify-between"
-              style={{ background: 'rgba(79,142,247,0.08)', border: '1px solid rgba(79,142,247,0.2)' }}>
+              style={{ background: 'rgba(26,58,229,0.06)', border: '1px solid rgba(26,58,229,0.12)' }}>
               <span className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>Room cost (inc. margin{gstOn ? ' + GST' : ''})</span>
               <span className="font-bold text-sm tabular-nums" style={{ color: 'var(--accent-blue)' }}>{fmtAUD(selAdj)}</span>
             </div>
@@ -2018,7 +2056,7 @@ function BuilderPanel({
 
       {/* Internal notes */}
       <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
-        <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'rgba(255,255,255,0.4)' }}>Internal Notes <span className="normal-case font-normal" style={{ color: 'rgba(255,255,255,0.25)' }}>(client cannot see)</span></p>
+        <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Internal Notes <span className="normal-case font-normal" style={{ color: 'rgba(0,0,0,0.2)' }}>(client cannot see)</span></p>
         <textarea value={builderNotes} onChange={e => setBuilderNotes(e.target.value)} rows={3}
           placeholder="Site notes, allowances, exclusions…"
           className="input-dark w-full text-[11px] rounded-lg px-2.5 py-2 resize-none" />
@@ -2040,10 +2078,10 @@ function BuilderPanel({
         if (!summary.length) return null
         return (
           <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
-            <p className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>Client Preferences</p>
+            <p className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: 'var(--text-tertiary)' }}>Client Preferences</p>
             <div className="space-y-1.5">
               {summary.map((s, i) => (
-                <div key={i} className="rounded-xl px-3 py-2" style={{ background: 'rgba(79,142,247,0.08)', border: '1px solid rgba(79,142,247,0.15)' }}>
+                <div key={i} className="rounded-xl px-3 py-2" style={{ background: 'rgba(26,58,229,0.06)', border: '1px solid rgba(26,58,229,0.1)' }}>
                   <p className="text-[10px] font-bold" style={{ color: 'var(--accent-blue)' }}>{s.name}</p>
                   <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>{s.choices}</p>
                 </div>
@@ -2053,53 +2091,6 @@ function BuilderPanel({
         )
       })()}
 
-      {/* Client messages */}
-      <div className="px-4 py-3 flex flex-col" style={{ minHeight: 0, borderTop: '1px solid var(--border)' }}>
-        <p className="text-[10px] uppercase tracking-widest font-semibold mb-3" style={{ color: 'rgba(255,255,255,0.4)' }}>Client Messages</p>
-        <div className="space-y-2 overflow-y-auto mb-3" style={{ maxHeight: 220 }}>
-          {messages.length === 0 ? (
-            <p className="text-[11px] text-center py-4" style={{ color: 'var(--text-tertiary)' }}>No messages yet</p>
-          ) : messages.map((m, i) => {
-            const isBuilder = m.sender_role === 'builder'
-            return (
-              <div key={m.id ?? i} className={`flex flex-col ${isBuilder ? 'items-end' : 'items-start'}`}>
-                <span className="text-[9px] mb-0.5 px-1" style={{ color: 'var(--text-tertiary)' }}>{isBuilder ? 'You' : (clientName || 'Client')}</span>
-                <div
-                  className="max-w-[85%] px-3 py-2 text-[11px] leading-relaxed"
-                  style={{
-                    background: isBuilder ? 'var(--accent-blue)' : 'rgba(255,255,255,0.07)',
-                    color: 'var(--text-primary)',
-                    borderRadius: isBuilder ? '8px 8px 2px 8px' : '8px 8px 8px 2px',
-                  }}
-                >
-                  {m.message_text}
-                </div>
-                <span className="text-[9px] mt-0.5 px-1" style={{ color: 'var(--text-tertiary)' }}>{fmtMsgTime(m.created_at)}</span>
-              </div>
-            )
-          })}
-        </div>
-        {isNew && (
-          <p className="text-[10px] text-amber-400 mb-1.5">Project saves automatically on first send.</p>
-        )}
-        <div className="flex gap-1.5">
-          <input
-            type="text"
-            value={msgInput}
-            onChange={e => setMsgInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && onSend()}
-            placeholder="Message client…"
-            className="input-dark flex-1 text-[11px] rounded-xl px-3 py-2"
-          />
-          <button onClick={onSend} disabled={!msgInput?.trim()}
-            className="btn-glow text-white rounded-xl px-3 py-2 cursor-pointer disabled:opacity-30"
-            style={{ background: 'var(--accent-blue)' }}>
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M1 6h10M6.5 1.5L11 6l-4.5 4.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-        </div>
-      </div>
     </>
   )
 }
@@ -2146,7 +2137,7 @@ function ClientRightPanel({ rooms, selId, setSelId, updRoom, onSaveNow }) {
           {selRoom ? (
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0"
-                style={{ background: 'rgba(79,142,247,0.12)', color: 'var(--accent-blue)' }}>
+                style={{ background: 'rgba(26,58,229,0.08)', color: 'var(--accent-blue)' }}>
                 <RoomIcon type={selRoom.type} size={17} />
               </div>
               <div>
@@ -2157,7 +2148,7 @@ function ClientRightPanel({ rooms, selId, setSelId, updRoom, onSaveNow }) {
           ) : (
             <div className="flex flex-col items-center py-3 text-center">
               <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3"
-                style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.2)' }}>
+                style={{ background: 'rgba(0,0,0,0.04)', color: 'rgba(0,0,0,0.2)' }}>
                 <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 12L11 4.5l8 7.5M5 11v8h12v-8"/>
                 </svg>
@@ -2172,15 +2163,15 @@ function ClientRightPanel({ rooms, selId, setSelId, updRoom, onSaveNow }) {
           <div className="px-5 pb-2">
             {Object.entries(catalog.categories).map(([cat, opts]) => (
               <div key={cat} className="mb-5">
-                <p className="text-[10px] uppercase tracking-widest font-semibold mb-3" style={{ color: 'rgba(255,255,255,0.4)' }}>{cat}</p>
+                <p className="text-[10px] uppercase tracking-widest font-semibold mb-3" style={{ color: 'var(--text-tertiary)' }}>{cat}</p>
                 <div className="grid grid-cols-3 gap-2">
                   {opts.map(opt => {
                     const active = selRoom.clientMaterials?.[cat] === opt.id
                     return (
                       <button key={opt.id} onClick={() => handleMat(selRoom.id, cat, opt.id)}
                         className="flex flex-col items-center gap-1.5 p-1.5 rounded-2xl cursor-pointer relative transition-all"
-                        style={{ border: active ? '2px solid var(--accent-blue)' : '2px solid transparent', boxShadow: active ? '0 0 12px rgba(79,142,247,0.3)' : 'none' }}
-                        onMouseEnter={e => { if (!active) e.currentTarget.style.borderColor='rgba(255,255,255,0.15)' }}
+                        style={{ border: active ? '2px solid var(--accent-blue)' : '2px solid transparent', boxShadow: active ? '0 0 12px rgba(26,58,229,0.2)' : 'none' }}
+                        onMouseEnter={e => { if (!active) e.currentTarget.style.borderColor='#C0C4CC' }}
                         onMouseLeave={e => { if (!active) e.currentTarget.style.borderColor='transparent' }}>
                         <div className="w-full rounded-xl overflow-hidden" style={{ height: 48 }}>
                           <div className="w-full h-full" style={{
@@ -2209,7 +2200,7 @@ function ClientRightPanel({ rooms, selId, setSelId, updRoom, onSaveNow }) {
 
         {/* SECTION 3 — your selections */}
         <div className="px-5 py-4">
-          <p className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: 'rgba(255,255,255,0.4)' }}>Your Selections</p>
+          <p className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: 'var(--text-tertiary)' }}>Your Selections</p>
           <div style={{ maxHeight: 200, overflowY: 'auto' }} className="space-y-0.5">
             {rooms.filter(r => r.type !== 'Corridor').map(r => {
               const rMats     = r.clientMaterials ?? {}
@@ -2222,8 +2213,8 @@ function ClientRightPanel({ rooms, selId, setSelId, updRoom, onSaveNow }) {
               return (
                 <button key={r.id} onClick={() => setSelId(isActive ? null : r.id)}
                   className="w-full flex items-center gap-2.5 py-2 px-2.5 rounded-xl cursor-pointer text-left transition"
-                  style={{ background: isActive ? 'rgba(79,142,247,0.1)' : 'transparent' }}
-                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.background='rgba(255,255,255,0.04)' }}
+                  style={{ background: isActive ? 'rgba(26,58,229,0.07)' : 'transparent' }}
+                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.background='rgba(0,0,0,0.04)' }}
                   onMouseLeave={e => { if (!isActive) e.currentTarget.style.background='transparent' }}>
                   <div className="shrink-0" style={{ color: hasAny ? 'var(--accent-blue)' : 'var(--text-tertiary)' }}>
                     <RoomIcon type={r.type} size={13} />
@@ -2268,9 +2259,10 @@ function ClientRightPanel({ rooms, selId, setSelId, updRoom, onSaveNow }) {
   )
 }
 
-// ─── client chat panel ────────────────────────────────────────────────────────
-function ClientChatPanel({ messages, input, setInput, onSend, onClose, isNew = false }) {
+// ─── shared chat panel (builder + client) ────────────────────────────────────
+function ChatPanel({ messages, myRole, title, placeholder, input, setInput, onSend, onClose, isNew = false }) {
   const bottomRef = useRef(null)
+  const otherLabel = myRole === 'builder' ? 'Client' : 'Builder'
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
   return (
@@ -2282,13 +2274,13 @@ function ClientChatPanel({ messages, input, setInput, onSend, onClose, isNew = f
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="var(--accent-blue)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 8a.75.75 0 01-.75.75H3.5L1.5 11V2.75A.75.75 0 012.25 2h9A.75.75 0 0112 2.75V8z"/>
           </svg>
-          <span className="font-bold text-[13px]" style={{ color: 'var(--text-primary)' }}>Builder chat</span>
+          <span className="font-bold text-[13px]" style={{ color: 'var(--text-primary)' }}>{title}</span>
         </div>
         <button onClick={onClose}
           className="w-6 h-6 flex items-center justify-center rounded-lg transition cursor-pointer"
-          style={{ color: 'rgba(255,255,255,0.4)' }}
-          onMouseEnter={e => { e.currentTarget.style.color='rgba(255,255,255,0.8)'; e.currentTarget.style.background='rgba(255,255,255,0.08)' }}
-          onMouseLeave={e => { e.currentTarget.style.color='rgba(255,255,255,0.4)'; e.currentTarget.style.background='' }}>
+          style={{ color: 'var(--text-tertiary)' }}
+          onMouseEnter={e => { e.currentTarget.style.color='var(--text-primary)'; e.currentTarget.style.background='var(--bg-secondary)' }}
+          onMouseLeave={e => { e.currentTarget.style.color='var(--text-tertiary)'; e.currentTarget.style.background='' }}>
           <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
             <path d="M1.5 1.5l8 8M9.5 1.5l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
           </svg>
@@ -2300,29 +2292,29 @@ function ClientChatPanel({ messages, input, setInput, onSend, onClose, isNew = f
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3"
-              style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.2)' }}>
+              style={{ background: 'rgba(0,0,0,0.04)', color: 'rgba(0,0,0,0.2)' }}>
               <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M19 13.5a1 1 0 01-1 1H5.5L2 18V4a1 1 0 011-1h15a1 1 0 011 1v9.5z"/>
               </svg>
             </div>
             <p className="text-[13px] font-semibold mb-1" style={{ color: 'var(--text-tertiary)' }}>Start a conversation</p>
-            <p className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>with your builder</p>
+            <p className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>with your {otherLabel.toLowerCase()}</p>
           </div>
         ) : (
           <div className="space-y-3">
             {messages.map((m, i) => {
-              const isMe = m.sender_role === 'client'
+              const isMe = m.sender_role === myRole
               const showLabel = i === 0 || messages[i - 1].sender_role !== m.sender_role
               return (
                 <div key={m.id ?? i} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                   {showLabel && (
-                    <span className="text-[10px] mb-1 px-1" style={{ color: 'var(--text-tertiary)' }}>{isMe ? 'You' : 'Builder'}</span>
+                    <span className="text-[10px] mb-1 px-1" style={{ color: 'var(--text-tertiary)' }}>{isMe ? 'You' : otherLabel}</span>
                   )}
                   <div
                     className="max-w-[90%] px-3 py-2 text-[12px] leading-relaxed"
                     style={{
-                      background: isMe ? 'var(--accent-blue)' : 'rgba(255,255,255,0.07)',
-                      color: 'var(--text-primary)',
+                      background: isMe ? 'var(--accent-blue)' : 'var(--bg-secondary)',
+                      color: isMe ? '#fff' : 'var(--text-primary)',
                       borderRadius: isMe ? '8px 8px 2px 8px' : '8px 8px 8px 2px',
                     }}
                   >
@@ -2340,13 +2332,13 @@ function ClientChatPanel({ messages, input, setInput, onSend, onClose, isNew = f
       {/* Input — pinned bottom */}
       <div className="px-4 py-3 shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
         {isNew && (
-          <p className="text-[10px] text-amber-400 mb-2">Your project will be saved automatically when you send.</p>
+          <p className="text-[10px] text-amber-400 mb-2">Project saves automatically on first send.</p>
         )}
         <textarea
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend() } }}
-          placeholder="Message your builder..."
+          placeholder={placeholder}
           rows={2}
           className="input-dark w-full text-[12px] rounded-xl px-3 py-2 resize-none leading-relaxed mb-2"
         />
@@ -2373,7 +2365,7 @@ function RoomMaterialsPanel({ room, onBack, onMaterialChange }) {
     return (
       <button onClick={() => onMaterialChange(room.id, cat, opt.id)}
         className={`flex flex-col items-center gap-1 p-1.5 rounded-xl border-2 transition cursor-pointer relative ${
-          active ? 'border-[#1a3a5c] shadow-sm' : 'border-gray-100 hover:border-gray-300 bg-white'
+          active ? 'border-[#1A3AE5] shadow-sm' : 'border-gray-100 hover:border-gray-300 bg-white'
         }`}>
         <div className="w-full rounded-lg overflow-hidden" style={{ height: 36 }}>
           <div className="w-full h-full" style={{
@@ -2382,9 +2374,9 @@ function RoomMaterialsPanel({ room, onBack, onMaterialChange }) {
               : opt.color,
           }} />
         </div>
-        <span className={`text-[9px] font-semibold leading-tight text-center ${active ? 'text-[#1a3a5c]' : 'text-gray-500'}`}>{opt.label}</span>
+        <span className={`text-[9px] font-semibold leading-tight text-center ${active ? 'text-[#1A3AE5]' : 'text-gray-500'}`}>{opt.label}</span>
         {active && (
-          <div className="absolute top-1 right-1 w-4 h-4 bg-[#1a3a5c] rounded-full flex items-center justify-center">
+          <div className="absolute top-1 right-1 w-4 h-4 bg-[#1A3AE5] rounded-full flex items-center justify-center">
             <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4l2 2 3-3" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </div>
         )}
@@ -2401,7 +2393,7 @@ function RoomMaterialsPanel({ room, onBack, onMaterialChange }) {
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8 2L4 6l4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
         <div>
-          <p className="font-bold text-[#1a3a5c] text-sm leading-none">{room.type}</p>
+          <p className="font-bold text-[#1A3AE5] text-sm leading-none">{room.type}</p>
           <p className="text-[10px] text-gray-400 mt-0.5">Pick your finishes</p>
         </div>
       </div>
@@ -2421,7 +2413,7 @@ function RoomMaterialsPanel({ room, onBack, onMaterialChange }) {
       {/* Done button */}
       <div className="px-4 py-4">
         <button onClick={onBack}
-          className="w-full py-3 rounded-2xl text-[12px] font-bold text-white bg-gradient-to-r from-[#1a3a5c] to-[#2d6a9f] hover:from-[#243f63] hover:to-[#3a7ab5] transition cursor-pointer shadow-sm">
+          className="w-full py-3 rounded-2xl text-[12px] font-bold text-white bg-gradient-to-r from-[#1A3AE5] to-[#2855f5] hover:from-[#1530c0] hover:to-[#2855f5] transition cursor-pointer shadow-sm">
           Done
         </button>
       </div>
@@ -2445,7 +2437,7 @@ function ClientPanel({ clientOnly, onOpenAI, rooms, style, setStyle, budgetTier,
       {clientOnly && (
         <div className="px-4 pt-5 pb-3">
           <button onClick={onOpenAI}
-            className="w-full flex items-center justify-center gap-2.5 bg-gradient-to-r from-[#1a3a5c] to-[#2d6a9f] hover:from-[#243f63] hover:to-[#3a7ab5] text-white rounded-2xl py-3.5 font-bold text-sm shadow-md hover:shadow-lg transition cursor-pointer">
+            className="w-full flex items-center justify-center gap-2.5 bg-gradient-to-r from-[#1A3AE5] to-[#2855f5] hover:from-[#1530c0] hover:to-[#2855f5] text-white rounded-2xl py-3.5 font-bold text-sm shadow-md hover:shadow-lg transition cursor-pointer">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M7 1v2.5M7 10.5V13M1 7h2.5M10.5 7H13M3 3l1.8 1.8M9.2 9.2L11 11M11 3l-1.8 1.8M4.8 9.2L3 11" stroke="white" strokeWidth="1.4" strokeLinecap="round"/>
             </svg>
@@ -2466,7 +2458,7 @@ function ClientPanel({ clientOnly, onOpenAI, rooms, style, setStyle, budgetTier,
               return (
                 <button key={s} onClick={() => setStyle(s)}
                   className={`py-3 rounded-2xl text-[11px] font-semibold transition cursor-pointer border-2 flex flex-col items-center gap-1.5 ${
-                    style === s ? 'border-[#1a3a5c] shadow-sm' : 'border-gray-100 hover:border-gray-200 bg-white'
+                    style === s ? 'border-[#1A3AE5] shadow-sm' : 'border-gray-100 hover:border-gray-200 bg-white'
                   }`}
                   style={style === s ? { background: t.fill, color: t.wall } : {}}>
                   <div className="flex gap-0.5">
@@ -2488,13 +2480,13 @@ function ClientPanel({ clientOnly, onOpenAI, rooms, style, setStyle, budgetTier,
               <button key={t.id} onClick={() => setBudgetTier(t.id)}
                 className={`w-full text-left px-3 py-2.5 rounded-xl text-[11px] font-semibold transition cursor-pointer border-2 flex items-center gap-2.5 ${
                   budgetTier === t.id
-                    ? 'bg-[#1a3a5c] text-white border-[#1a3a5c]'
+                    ? 'bg-[#1A3AE5] text-white border-[#1A3AE5]'
                     : 'bg-white text-gray-500 border-gray-100 hover:border-gray-200 hover:text-gray-700'
                 }`}>
                 <span className="text-base leading-none">{t.icon}</span>
                 <div>
                   <div>{t.label}</div>
-                  <div className={`text-[9px] font-normal mt-0.5 ${budgetTier === t.id ? 'text-white/70' : 'text-gray-400'}`}>{t.desc}</div>
+                  <div className={`text-[9px] font-normal mt-0.5 ${budgetTier === t.id ? 'text-[#5A6472]' : 'text-gray-400'}`}>{t.desc}</div>
                 </div>
                 {budgetTier === t.id && <svg className="ml-auto shrink-0" width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5.5" fill="white" fillOpacity="0.25"/><path d="M4 6.5l2 2 3-3" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>}
               </button>
@@ -2511,7 +2503,7 @@ function ClientPanel({ clientOnly, onOpenAI, rooms, style, setStyle, budgetTier,
               <div key={key}>
                 <p className="text-[10px] text-gray-400 mb-1">{key}</p>
                 <select value={finishes[key]} onChange={e => setFinishes(f => ({ ...f, [key]: e.target.value }))}
-                  className="w-full text-[11px] border border-gray-200 rounded-lg px-2 py-1.5 text-[#1a3a5c] bg-white outline-none cursor-pointer focus:ring-1 focus:ring-[#1a3a5c]/20">
+                  className="w-full text-[11px] border border-gray-200 rounded-lg px-2 py-1.5 text-[#1A3AE5] bg-white outline-none cursor-pointer focus:ring-1 focus:ring-[#1a3a5c]/20">
                   {opts.map(o => <option key={o}>{o}</option>)}
                 </select>
               </div>
@@ -2528,7 +2520,7 @@ function ClientPanel({ clientOnly, onOpenAI, rooms, style, setStyle, budgetTier,
             <div className="space-y-2 mb-3 max-h-32 overflow-y-auto">
               {messages.map((m, i) => (
                 <div key={i} className={`rounded-xl px-3 py-2 text-[11px] ${
-                  m.from === 'client' ? 'bg-[#1a3a5c]/8 text-[#1a3a5c]' : 'bg-gray-50 text-gray-600'
+                  m.from === 'client' ? 'bg-[#1A3AE5]/8 text-[#1A3AE5]' : 'bg-gray-50 text-gray-600'
                 }`}>
                   <p className="font-bold text-[9px] uppercase tracking-wide mb-0.5 opacity-60">{m.from}</p>
                   {m.text}
@@ -2539,8 +2531,8 @@ function ClientPanel({ clientOnly, onOpenAI, rooms, style, setStyle, budgetTier,
           <div className="flex gap-1.5 mb-3">
             <input type="text" value={msgText} onChange={e => setMsgText(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && onSend()} placeholder="Type a message…"
-              className="flex-1 text-[11px] border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-1 focus:ring-[#1a3a5c]/20 focus:border-[#1a3a5c]/30 bg-white" />
-            <button onClick={onSend} className="bg-[#1a3a5c] text-white rounded-xl px-3 py-2 hover:bg-[#243f63] transition cursor-pointer">
+              className="flex-1 text-[11px] border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-1 focus:ring-[#1a3a5c]/20 focus:border-[#1A3AE5]/30 bg-white" />
+            <button onClick={onSend} className="bg-[#1A3AE5] text-white rounded-xl px-3 py-2 hover:bg-[#1530c0] transition cursor-pointer">
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 6h10M6.5 1.5L11 6l-4.5 4.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </button>
           </div>
@@ -2549,14 +2541,14 @@ function ClientPanel({ clientOnly, onOpenAI, rooms, style, setStyle, budgetTier,
           {clientOnly && (() => {
             const summary = getRoomSelectionSummary(rooms ?? [])
             return summary.length > 0 ? (
-              <div className="mb-3 bg-[#1a3a5c]/4 rounded-2xl px-3 py-3">
-                <p className="text-[9px] uppercase tracking-widest text-[#1a3a5c]/50 font-semibold mb-2">Your selections so far</p>
+              <div className="mb-3 bg-[#1A3AE5]/4 rounded-2xl px-3 py-3">
+                <p className="text-[9px] uppercase tracking-widest text-[#1A3AE5]/50 font-semibold mb-2">Your selections so far</p>
                 <div className="space-y-1.5">
                   {summary.map((s, i) => (
                     <div key={i} className="flex items-start gap-1.5">
-                      <div className="w-1.5 h-1.5 bg-[#1a3a5c]/30 rounded-full mt-1 shrink-0" />
+                      <div className="w-1.5 h-1.5 bg-[#1A3AE5]/30 rounded-full mt-1 shrink-0" />
                       <div>
-                        <span className="text-[10px] font-bold text-[#1a3a5c]">{s.name}</span>
+                        <span className="text-[10px] font-bold text-[#1A3AE5]">{s.name}</span>
                         <span className="text-[10px] text-gray-400"> — {s.choices}</span>
                       </div>
                     </div>
@@ -2641,7 +2633,7 @@ function SmartGeneratorModal({ onGenerate, onClose }) {
         {/* Header */}
         <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex items-center justify-between">
           <div>
-            <h2 className="text-[#1a3a5c] font-bold text-base">
+            <h2 className="text-[#1A3AE5] font-bold text-base">
               {generated ? 'Floor Plan Ready' : customMode ? 'Custom Floor Plan' : 'Choose a Template'}
             </h2>
             <p className="text-gray-400 text-xs mt-0.5">
@@ -2674,7 +2666,7 @@ function SmartGeneratorModal({ onGenerate, onClose }) {
                   <path d="M8 13l3.5 3.5 7-7" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>
-              <h3 className="text-[#1a3a5c] font-bold text-lg mb-2">
+              <h3 className="text-[#1A3AE5] font-bold text-lg mb-2">
                 {selectedId !== 'custom'
                   ? (FLOOR_TEMPLATES.find(t => t.id === selectedId)?.name ?? 'Custom Plan')
                   : 'Custom Floor Plan'}
@@ -2693,10 +2685,10 @@ function SmartGeneratorModal({ onGenerate, onClose }) {
                     <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-3">{label}</p>
                     <div className="flex items-center justify-center gap-4">
                       <button onClick={() => set(v => Math.max(min, v - 1))}
-                        className="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold transition cursor-pointer border-gray-200 text-gray-500 hover:border-[#1a3a5c] hover:text-[#1a3a5c]">−</button>
-                      <span className="text-3xl font-bold text-[#1a3a5c] w-8 text-center tabular-nums">{val}</span>
+                        className="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold transition cursor-pointer border-gray-200 text-gray-500 hover:border-[#1A3AE5] hover:text-[#1A3AE5]">−</button>
+                      <span className="text-3xl font-bold text-[#1A3AE5] w-8 text-center tabular-nums">{val}</span>
                       <button onClick={() => set(v => Math.min(max, v + 1))}
-                        className="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold transition cursor-pointer border-gray-200 text-gray-500 hover:border-[#1a3a5c] hover:text-[#1a3a5c]">+</button>
+                        className="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold transition cursor-pointer border-gray-200 text-gray-500 hover:border-[#1A3AE5] hover:text-[#1A3AE5]">+</button>
                     </div>
                   </div>
                 ))}
@@ -2704,14 +2696,14 @@ function SmartGeneratorModal({ onGenerate, onClose }) {
               <div>
                 <div className="flex justify-between mb-1.5">
                   <span className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold">House size</span>
-                  <span className="text-[11px] font-bold text-[#1a3a5c]">{houseSize}m²</span>
+                  <span className="text-[11px] font-bold text-[#1A3AE5]">{houseSize}m²</span>
                 </div>
                 <input type="range" min={120} max={600} step={10} value={houseSize}
                   onChange={e => setHouseSize(+e.target.value)} className="w-full accent-[#1a3a5c] cursor-pointer" />
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
                 <div onClick={() => setSingleGar(g => !g)}
-                  className={`w-8 h-4 rounded-full transition-colors relative cursor-pointer ${singleGar ? 'bg-[#1a3a5c]' : 'bg-gray-200'}`}>
+                  className={`w-8 h-4 rounded-full transition-colors relative cursor-pointer ${singleGar ? 'bg-[#1A3AE5]' : 'bg-gray-200'}`}>
                   <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${singleGar ? 'translate-x-4' : 'translate-x-0.5'}`} />
                 </div>
                 <span className="text-[11px] text-gray-500">Single garage</span>
@@ -2722,7 +2714,7 @@ function SmartGeneratorModal({ onGenerate, onClose }) {
                   {EXTRA_ROOMS.map(e => (
                     <button key={e} onClick={() => toggleExtra(e)}
                       className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer ${
-                        extras.includes(e) ? 'bg-[#1a3a5c] text-white border-[#1a3a5c]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                        extras.includes(e) ? 'bg-[#1A3AE5] text-white border-[#1A3AE5]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
                       }`}>
                       {e}
                     </button>
@@ -2735,18 +2727,18 @@ function SmartGeneratorModal({ onGenerate, onClose }) {
             <div className="space-y-3">
               {FLOOR_TEMPLATES.map(tpl => (
                 <button key={tpl.id} onClick={() => handleTemplate(tpl)}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-gray-100 hover:border-[#1a3a5c] hover:bg-[#1a3a5c]/3 text-left transition cursor-pointer group">
-                  <div className="w-12 h-12 rounded-xl bg-[#1a3a5c]/6 flex items-center justify-center text-[#1a3a5c] shrink-0 group-hover:bg-[#1a3a5c]/10 transition">
+                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-gray-100 hover:border-[#1A3AE5] hover:bg-[#1A3AE5]/3 text-left transition cursor-pointer group">
+                  <div className="w-12 h-12 rounded-xl bg-[#1A3AE5]/6 flex items-center justify-center text-[#1A3AE5] shrink-0 group-hover:bg-[#1A3AE5]/10 transition">
                     {TEMPLATE_ICONS[tpl.id]}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2">
-                      <span className="font-bold text-[#1a3a5c] text-sm">{tpl.name}</span>
+                      <span className="font-bold text-[#1A3AE5] text-sm">{tpl.name}</span>
                       <span className="text-gray-300 text-[10px] font-medium">{tpl.size}</span>
                     </div>
                     <p className="text-gray-400 text-[11px] mt-0.5">{tpl.desc}</p>
                   </div>
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-gray-300 group-hover:text-[#1a3a5c] transition shrink-0">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-gray-300 group-hover:text-[#1A3AE5] transition shrink-0">
                     <path d="M4 2l5 5-5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </button>
@@ -2765,12 +2757,12 @@ function SmartGeneratorModal({ onGenerate, onClose }) {
           <div className="px-6 pb-6">
             {generated ? (
               <button onClick={onClose}
-                className="w-full bg-[#1a3a5c] hover:bg-[#243f63] text-white font-semibold text-sm py-3 rounded-xl transition cursor-pointer">
+                className="w-full bg-[#1A3AE5] hover:bg-[#1530c0] text-white font-semibold text-sm py-3 rounded-xl transition cursor-pointer">
                 Start editing
               </button>
             ) : (
               <button onClick={handleCustom}
-                className="w-full flex items-center justify-center gap-2 bg-[#1a3a5c] hover:bg-[#243f63] text-white font-semibold text-sm py-3 rounded-xl transition cursor-pointer">
+                className="w-full flex items-center justify-center gap-2 bg-[#1A3AE5] hover:bg-[#1530c0] text-white font-semibold text-sm py-3 rounded-xl transition cursor-pointer">
                 Generate floor plan
               </button>
             )}
@@ -2879,7 +2871,7 @@ function RoomBlock({ room, selected, view, clientStyle, cost, highlighted, build
       {builderMode && !isCorridor && (
         <div className="absolute top-1 right-1 z-20" onMouseDown={e => e.stopPropagation()}>
           <button onClick={e => { e.stopPropagation(); setCatalogOpen(o => !o) }}
-            className="w-4 h-4 bg-white/70 hover:bg-white border border-gray-100 rounded text-gray-400 hover:text-[#1a3a5c] flex items-center justify-center transition shadow-sm">
+            className="w-4 h-4 bg-white/70 hover:bg-white border border-gray-100 rounded text-gray-400 hover:text-[#1A3AE5] flex items-center justify-center transition shadow-sm">
             <svg width="7" height="7" viewBox="0 0 8 8" fill="none">
               <circle cx="4" cy="4" r="1.2" stroke="currentColor" strokeWidth="1"/>
               <circle cx="4" cy="4" r="3" stroke="currentColor" strokeWidth="0.7"/>
@@ -2892,7 +2884,7 @@ function RoomBlock({ room, selected, view, clientStyle, cost, highlighted, build
               {FLOOR_OPTS.map(o => (
                 <button key={o} onClick={() => { onFloorChange(o); setCatalogOpen(false) }}
                   className={`w-full text-left px-2.5 py-1.5 text-[10px] transition cursor-pointer ${
-                    o === floorMat ? 'text-[#1a3a5c] font-bold bg-[#1a3a5c]/5' : 'text-gray-500 hover:bg-gray-50'
+                    o === floorMat ? 'text-[#1A3AE5] font-bold bg-[#1A3AE5]/5' : 'text-gray-500 hover:bg-gray-50'
                   }`}>
                   {o}
                 </button>

@@ -36,20 +36,18 @@ export default function AuthPage() {
     <div className="min-h-screen flex" style={{ background: 'var(--bg-primary)', fontFamily: "'Inter', system-ui, sans-serif" }}>
       {/* Left panel */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative overflow-hidden"
-        style={{ background: 'var(--bg-secondary)' }}>
-        {/* Dot grid pattern */}
+        style={{ background: 'var(--bg-secondary)', borderRight: '1px solid var(--border)' }}>
+        {/* Subtle dot grid */}
         <div
           className="absolute inset-0"
           style={{
-            backgroundImage: `radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)`,
-            backgroundSize: '10px 10px',
+            backgroundImage: `radial-gradient(circle, rgba(26,58,229,0.07) 1px, transparent 1px)`,
+            backgroundSize: '20px 20px',
           }}
         />
-        {/* Large blurred gradient orb */}
-        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] rounded-full pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(79,142,247,0.18) 0%, transparent 70%)', filter: 'blur(40px)' }} />
-        <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(108,99,255,0.12) 0%, transparent 70%)', filter: 'blur(40px)' }} />
+        {/* Soft blue tint accent */}
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(26,58,229,0.06) 0%, transparent 70%)', filter: 'blur(60px)' }} />
 
         <div className="relative">
           <LogoMark />
@@ -57,15 +55,15 @@ export default function AuthPage() {
 
         <div className="relative space-y-6">
           <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+            style={{ background: 'rgba(26,58,229,0.06)', border: '1px solid rgba(26,58,229,0.12)' }}>
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--success)' }} />
-            <span className="text-xs font-medium tracking-wide" style={{ color: 'rgba(255,255,255,0.7)' }}>Built for Australian Builders</span>
+            <span className="text-xs font-medium tracking-wide" style={{ color: 'var(--text-secondary)' }}>Built for Australian Builders</span>
           </div>
-          <h2 className="text-4xl font-medium leading-tight" style={{ color: 'var(--text-primary)', letterSpacing: '0.02em' }}>
+          <h2 className="text-4xl font-semibold leading-tight" style={{ color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             Manage every project.<br />
             <span style={{ color: 'var(--accent-blue)' }}>Close every job.</span>
           </h2>
-          <p className="text-sm leading-relaxed max-w-sm" style={{ color: 'var(--text-secondary)' }}>
+          <p className="text-sm leading-relaxed max-w-sm" style={{ color: 'var(--text-secondary)', lineHeight: '1.7' }}>
             Quotes, timelines, and client updates — all in one place. Designed for the way you work.
           </p>
         </div>
@@ -79,12 +77,12 @@ export default function AuthPage() {
         </div>
       </div>
 
-      {/* Right panel — glass card centred */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12 relative overflow-hidden"
+      {/* Right panel */}
+      <div className="flex-1 flex items-center justify-center px-6 py-12 relative"
         style={{ background: 'var(--bg-canvas)' }}>
         {/* Subtle dot grid */}
         <div className="absolute inset-0 pointer-events-none"
-          style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)', backgroundSize: '10px 10px' }} />
+          style={{ backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.05) 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
 
         <div className="w-full max-w-sm relative">
           {/* Mobile logo */}
@@ -92,28 +90,28 @@ export default function AuthPage() {
             <LogoMark />
           </div>
 
-          {/* Glass card */}
+          {/* Card */}
           <div className="rounded-2xl px-8 py-8"
             style={{
               background: 'var(--bg-card)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              backdropFilter: 'blur(12px)',
+              border: '1px solid var(--border)',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06)',
             }}>
 
             {/* Building icon */}
             <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-6 mx-auto"
-              style={{ background: 'rgba(79,142,247,0.15)', border: '1px solid rgba(79,142,247,0.3)' }}>
+              style={{ background: 'rgba(26,58,229,0.08)', border: '1px solid rgba(26,58,229,0.15)' }}>
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <rect x="2" y="9" width="14" height="8" rx="1" fill="none" stroke="#4f8ef7" strokeWidth="1.4"/>
-                <rect x="5" y="5.5" width="8" height="4.5" rx="0.7" fill="none" stroke="#4f8ef7" strokeWidth="1.2"/>
-                <rect x="3.5" y="12" width="3" height="3" rx="0.4" fill="#4f8ef7" fillOpacity="0.6"/>
-                <rect x="12.5" y="12" width="3" height="3" rx="0.4" fill="#4f8ef7" fillOpacity="0.6"/>
-                <rect x="7.5" y="12" width="3" height="5" rx="0.4" fill="#4f8ef7" fillOpacity="0.6"/>
+                <rect x="2" y="9" width="14" height="8" rx="1" fill="none" stroke="#1A3AE5" strokeWidth="1.4"/>
+                <rect x="5" y="5.5" width="8" height="4.5" rx="0.7" fill="none" stroke="#1A3AE5" strokeWidth="1.2"/>
+                <rect x="3.5" y="12" width="3" height="3" rx="0.4" fill="#1A3AE5" fillOpacity="0.5"/>
+                <rect x="12.5" y="12" width="3" height="3" rx="0.4" fill="#1A3AE5" fillOpacity="0.5"/>
+                <rect x="7.5" y="12" width="3" height="5" rx="0.4" fill="#1A3AE5" fillOpacity="0.5"/>
               </svg>
             </div>
 
             <div className="mb-6 text-center">
-              <h1 className="text-xl font-medium mb-1" style={{ color: 'var(--text-primary)', letterSpacing: '0.02em' }}>
+              <h1 className="text-xl font-semibold mb-1" style={{ color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
                 {mode === 'signin' ? 'Welcome back' : 'Create your account'}
               </h1>
               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -161,16 +159,16 @@ export default function AuthPage() {
 
               {error && (
                 <div className="flex items-start gap-2.5 rounded-xl px-4 py-3"
-                  style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)' }}>
-                  <span className="mt-0.5 shrink-0" style={{ color: '#f87171' }}>
+                  style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                  <span className="mt-0.5 shrink-0" style={{ color: '#dc2626' }}>
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.5"/><path d="M7 4v3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><circle cx="7" cy="10" r="0.75" fill="currentColor"/></svg>
                   </span>
-                  <p className="text-sm" style={{ color: '#fca5a5' }}>{error}</p>
+                  <p className="text-sm" style={{ color: '#dc2626' }}>{error}</p>
                 </div>
               )}
               {message && (
                 <div className="flex items-start gap-2.5 rounded-xl px-4 py-3"
-                  style={{ background: 'rgba(31,216,164,0.1)', border: '1px solid rgba(31,216,164,0.25)' }}>
+                  style={{ background: 'rgba(5,150,105,0.06)', border: '1px solid rgba(5,150,105,0.2)' }}>
                   <span className="mt-0.5 shrink-0" style={{ color: 'var(--success)' }}>
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.5"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   </span>
@@ -185,7 +183,7 @@ export default function AuthPage() {
                 style={{
                   background: 'var(--accent-blue)',
                   color: '#fff',
-                  boxShadow: '0 4px 20px rgba(79,142,247,0.3)',
+                  boxShadow: '0 2px 12px rgba(26,58,229,0.25)',
                 }}
               >
                 {loading ? 'Please wait…' : mode === 'signin' ? 'Sign In' : 'Create Account'}
@@ -228,7 +226,7 @@ function Field({ label, children }) {
   return (
     <div className="space-y-1.5">
       <label className="block text-[10px] font-semibold uppercase tracking-widest"
-        style={{ color: 'rgba(255,255,255,0.4)' }}>{label}</label>
+        style={{ color: 'var(--text-tertiary)' }}>{label}</label>
       {children}
     </div>
   )
@@ -238,7 +236,7 @@ function Stat({ value, label }) {
   return (
     <div>
       <div className="font-bold text-lg leading-none tabular-nums" style={{ color: 'var(--text-primary)' }}>{value}</div>
-      <div className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.4)' }}>{label}</div>
+      <div className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>{label}</div>
     </div>
   )
 }
@@ -247,13 +245,13 @@ function LogoMark() {
   return (
     <div className="flex items-center gap-2.5">
       <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-        style={{ background: 'var(--accent-blue)', boxShadow: '0 4px 14px rgba(79,142,247,0.4)' }}>
+        style={{ background: 'var(--accent-blue)', boxShadow: '0 2px 8px rgba(26,58,229,0.3)' }}>
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
           <rect x="2" y="7" width="12" height="7" rx="1" fill="white" fillOpacity="0.9"/>
           <rect x="4.5" y="4" width="7" height="4" rx="0.75" fill="white"/>
-          <rect x="3" y="10" width="2.5" height="2.5" rx="0.4" fill="#4f8ef7"/>
-          <rect x="10.5" y="10" width="2.5" height="2.5" rx="0.4" fill="#4f8ef7"/>
-          <rect x="6.75" y="10" width="2.5" height="4" rx="0.4" fill="#4f8ef7"/>
+          <rect x="3" y="10" width="2.5" height="2.5" rx="0.4" fill="#1A3AE5"/>
+          <rect x="10.5" y="10" width="2.5" height="2.5" rx="0.4" fill="#1A3AE5"/>
+          <rect x="6.75" y="10" width="2.5" height="4" rx="0.4" fill="#1A3AE5"/>
         </svg>
       </div>
       <span className="font-bold text-base tracking-tight" style={{ color: 'var(--text-primary)' }}>BuildFlow Pro</span>
